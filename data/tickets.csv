@@ -1,0 +1,2 @@
+t_start,slug,tier,side,price,ev,sent_utc,result,pnl10,settled_utc,max_price,secs_left,t_spot,t_quote,t_decide,t_sent,discord_ms,msg_id,fresh_ask,ask_5,ask_10,ask_20,ask_30,ask_45,ask_60,expired_s,fill_price,status
+1795609800,btc-updown-5m-2026-11-25-1230z,JJ,Down,0.38,0.1139,2026-11-25T12:31:02Z,LOSS,-10.54,2026-11-25T12:35:46Z,0.47,240,1795609860.74,1795609860.79,1795609860.86,1795609862.64,891,1575126668195008684,0.38,0.43,0.43,0.43,0.43,0.43,0.43,,0.43,FILLABLE
