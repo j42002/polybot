@@ -314,19 +314,19 @@ def latency_lines():
 
 
 def team_lines():
-    """Is ChatGPT's second opinion worth listening to? Compare tickets it agreed with vs passed on."""
+    """Is Gemini's second opinion worth listening to? Compare tickets it agreed with vs passed on."""
     rows = [r for r in read_csv(os.path.join("data", "tickets.csv"))
-            if r.get("gpt_verdict") in ("AGREE", "PASS") and r.get("result") in ("WIN", "LOSS")]
-    out = ["", "## ChatGPT second opinion", ""]
+            if r.get("ai_verdict") in ("AGREE", "PASS") and r.get("result") in ("WIN", "LOSS")]
+    out = ["", "## Gemini second opinion", ""]
     if not rows:
-        return out + ["No graded tickets with a ChatGPT opinion yet."]
+        return out + ["No graded tickets with a Gemini opinion yet."]
     for v in ("AGREE", "PASS"):
-        g = [r for r in rows if r["gpt_verdict"] == v]
+        g = [r for r in rows if r["ai_verdict"] == v]
         if g:
             w = sum(r["result"] == "WIN" for r in g)
             pnl = sum(float(r.get("pnl10") or 0) for r in g)
-            out.append(f"- ChatGPT said {v}: {len(g)} tickets, won {w} ({w / len(g):.0%}), $10 each = {pnl:+.2f}")
-    out.append("- If PASS tickets lose money and AGREE tickets make money, ChatGPT is adding value.")
+            out.append(f"- Gemini said {v}: {len(g)} tickets, won {w} ({w / len(g):.0%}), $10 each = {pnl:+.2f}")
+    out.append("- If PASS tickets lose money and AGREE tickets make money, Gemini is adding value.")
     return out
 
 

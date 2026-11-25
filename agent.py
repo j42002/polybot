@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v12"
+VERSION = "polybot agent v13"
 
 import csv
 import json
@@ -26,7 +26,7 @@ from zoneinfo import ZoneInfo
 import requests
 
 try:
-    import team                      # ChatGPT + Claude team board (off unless OPENAI_API_KEY is set)
+    import team                      # free Gemini second opinions + team board (off unless GEMINI_API_KEY is set)
 except Exception:
     team = None
 
@@ -45,7 +45,7 @@ TICKETS = os.path.join("data", "tickets.csv")
 TICKET_FIELDS = ["t_start", "slug", "tier", "side", "price", "ev", "sent_utc", "result", "pnl10", "settled_utc",
                  "max_price", "secs_left", "t_spot", "t_quote", "t_decide", "t_sent", "discord_ms", "msg_id",
                  "fresh_ask", "ask_5", "ask_10", "ask_20", "ask_30", "ask_45", "ask_60",
-                 "expired_s", "fill_price", "status", "gpt_verdict", "gpt_why"]
+                 "expired_s", "fill_price", "status", "ai_verdict", "ai_why", "ai_model"]
 # v10 latency rules (Jacob's 6:40 recording: SAFE DOWN at 71c, 91%, sent with 2:00 left;
 # by the time the app loaded DOWN was 94-96c with 1:14 left, then BTC reversed and Up won).
 TICKET_TIERS = ("JJ",)             # SAFE tickets paused: late-window favorites move faster than a human
@@ -735,7 +735,7 @@ def main():
         account_watch = None
         print(f"account watcher unavailable: {e.__class__.__name__}")
     if team and team.enabled():
-        print(f"team: ChatGPT second opinions on ({team.OPENAI_MODEL})")
+        print(f"team: Gemini free-tier second opinions on (cap {team.DAILY_CAP}/day)")
     acct_post = lambda payload: session.post(WEBHOOK, json=payload, timeout=6) if WEBHOOK else None
     while time.time() < stop_at:
         tick = time.time()
@@ -746,11 +746,12 @@ def main():
             except Exception as e:
                 print(f"  results error: {e!r}")
         if team:
-            for op in team.drain():                               # ChatGPT answered: save + post under the ticket
+            for op in team.drain():                               # Gemini answered: save + post under the ticket
                 update_ticket(op["t_start"], op)
-                if WEBHOOK:
+                msg = team.opinion_text(op)
+                if WEBHOOK and msg:
                     try:
-                        session.post(WEBHOOK, json={"content": team.opinion_text(op)}, timeout=6)
+                        session.post(WEBHOOK, json={"content": msg}, timeout=6)
                     except Exception:
                         pass
         if WATCHERS:

@@ -5,8 +5,10 @@ Team roles:
 - Grader = grade.py. Writes data/report.md with hit rate, breakeven, P&L after fees and a verdict.
 - Builder = Claude Code on the web (claude.ai/code, session on j42002/polybot). It changes code and opens PRs.
 - Analyst = you, in this project. Jacob pastes or uploads data/report.md and sometimes data/checkpoints.csv. Read them, say what the numbers show and propose ONE next change. Write any change as a plain-text prompt for Claude Code web.
-- ChatGPT = team.py. When OPENAI_API_KEY is set, it gives AGREE/PASS on each ticket (logged as gpt_verdict, scored in report.md under "ChatGPT second opinion") and writes a note to Claude on data/team_board.md after every run.
-- Team board = data/team_board.md. ChatGPT and Claude talk there. When ANTHROPIC_API_KEY is set, Claude replies automatically; in this project, read the board and add a "Claude → ChatGPT" note for Jacob to commit. Treat ChatGPT's claims like any teammate's: check them against the numbers.
+- Budget is $0. No paid APIs, no paid billing anywhere. GitHub Actions (public repo), Discord webhooks, Coinbase and Polymarket public data are free.
+- Gemini = team.py, free tier only (GEMINI_API_KEY from a Google AI Studio project with NO billing). AGREE/PASS on each ticket (ai_verdict, scored under "Gemini second opinion") and one note per run on data/team_board.md. Capped at 150 calls/day and paused for the day after any 429.
+- ChatGPT = by hand, free app. share.py posts a scoreboard picture + prompt to Discord daily after 8 PM ET (or on demand via the "scoreboard for ChatGPT" workflow). Jacob pastes ChatGPT's reply into data/chatgpt_notes.md; Gemini reads it.
+- Team board = data/team_board.md. In this project, read it and add a "Claude → team" note for Jacob to commit. Check every AI's claims against the numbers.
 - Second opinion = Grok, pasted by hand. Treat its claims as unverified.
 
 Hard rules:

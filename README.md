@@ -31,3 +31,9 @@ GitHub Actions starts it every 20 minutes and each run lasts 55 minutes, so it r
 6. Paper results use the price 30s after the ticket (human speed). If it ran away, the ticket is MISSED.
 7. The model never claims more than 88%, and its volatility is re-fitted on real settled rounds once there are 150 (data/model_tune.json).
 8. Every ticket logs timestamps (price read, decision, Discord sent, Discord ms) to data/tickets.csv; report.md shows speed and calibration.
+
+## AI team ($0, v13)
+- No paid APIs or billing. Everything runs on free tiers: GitHub Actions (public repo), Discord webhooks, Coinbase and Polymarket public data.
+- **Gemini (automatic, free tier):** add a `GEMINI_API_KEY` secret made in Google AI Studio from a project with no billing account. Gemini gives AGREE/PASS on each ticket (never delays or blocks it) and writes one note per run on `data/team_board.md`. It is capped at 150 calls/day and paused until midnight Pacific after any 429. Only public market numbers are sent, because Google may use free-tier prompts to improve its products.
+- **ChatGPT (by hand, free app):** `share.py` posts a scoreboard picture plus a ready prompt to Discord once a day after 8 PM ET. The Actions workflow "scoreboard for ChatGPT" does the same on demand. Paste ChatGPT's reply into `data/chatgpt_notes.md`; Gemini reads it.
+- `grade.py` scores Gemini: win rate and P&L of tickets it agreed with vs passed on.

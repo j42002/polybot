@@ -5,7 +5,7 @@ on:
     - cron: "*/20 * * * *"
   push:
     branches: [main]
-    paths: [".github/workflows/polybot.yml", "agent.py", "team.py"]
+    paths: [".github/workflows/polybot.yml", "agent.py", "team.py", "share.py"]
   workflow_dispatch:
     inputs:
       minutes:
@@ -42,17 +42,21 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           POLYMARKET_KEY_ID: ${{ secrets.POLYMARKET_KEY_ID }}
           POLYMARKET_SECRET_KEY: ${{ secrets.POLYMARKET_SECRET_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       - name: grade
         run: python grade.py
         continue-on-error: true
-      - name: team board (ChatGPT writes to Claude, Claude replies)
+      - name: team board (Gemini free tier, $0)
         continue-on-error: true
         run: python team.py board
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      - name: daily scoreboard for ChatGPT (posted once a day after 8 PM ET)
+        continue-on-error: true
+        run: python share.py --daily
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
       - name: commit data (merge-safe)
         run: |
           git config user.name "polybot"

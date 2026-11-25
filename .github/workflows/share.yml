@@ -1,0 +1,38 @@
+name: scoreboard for ChatGPT
+# One click: posts the scoreboard picture + a ready prompt to Discord. $0.
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: polybot-share
+jobs:
+  share:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: build and post scoreboard
+        run: python grade.py || true; python share.py
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+      - name: commit data (merge-safe)
+        run: |
+          git config user.name "polybot"
+          git config user.email "polybot@users.noreply.github.com"
+          rm -rf /tmp/ours && cp -r data /tmp/ours
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            python sync_data.py /tmp/ours data
+            git add -A data/
+            git diff --cached --quiet && exit 0
+            git commit -q -m "scoreboard share $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push -q origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
