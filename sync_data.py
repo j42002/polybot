@@ -23,6 +23,7 @@ KEYS = {
     "results.csv": ("slug",),
     "tickets.csv": ("t_start",),
     "loop_stats.csv": ("run_utc",),
+    "closes.csv": ("slug",),
 }
 # fingerprint lists: union of lines
 UNION_LINES = {"account_seen.txt"}

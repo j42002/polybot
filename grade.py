@@ -222,7 +222,7 @@ def build_report(rows, results):
                          f"(set BASIS_SD near {sd:.0f})")
     best, info = fit_sigma(graded, res)
     tune = tune_lines(best, info)
-    lines += calibration_lines(graded, res) + ["", "## Model tuning", ""] + tune + forward_lines(graded, res) + funnel_lines(graded, res) + honest_lines() + latency_lines() + loop_lines() + team_lines()
+    lines += calibration_lines(graded, res) + ["", "## Model tuning", ""] + tune + forward_lines(graded, res) + funnel_lines(graded, res) + settlement_lines(res) + honest_lines() + latency_lines() + loop_lines() + team_lines()
     lines += ["", f"_{VERSION}_"]
     return "\n".join(lines)
 
@@ -462,7 +462,8 @@ def funnel_lines(graded, res):
     for r in graded:
         d = r.get("ticket_decision") or ""
         if d.startswith("SKIP_") or d in ("EDGE_CAP", "BELOW_BAR"):
-            side, px = r.get("jj_side") or r.get("safe_side"), fnum(r.get("jj_price") or r.get("safe_price"))
+            side = r.get("jj_side") or r.get("safe_side")
+            px = fnum(r.get("block_price")) or fnum(r.get("jj_price") or r.get("safe_price"))  # price that existed
             pnl = bet_pnl(side, px, res[r["slug"]]["winner"], fnum(r.get("fee_rate")))
             if pnl is not None:
                 b = blocked.setdefault(d, {})
@@ -479,6 +480,38 @@ def funnel_lines(graded, res):
         out.append(f"- Liquidity (units UNVERIFIED, not used): {ok}/{len(sizes)} simulated taps showed ask size >= $10 worth")
     else:
         out.append("- Liquidity: the venue's quote has not reported ask size yet; fills stay 'simulated'.")
+    return out
+
+
+def settlement_lines(res):
+    """Does our price source (Coinbase) agree with what the market actually settles on (BRTI)?
+    If Coinbase often points at the other winner near the target, part of any 'edge' is fake."""
+    closes = {r["slug"]: r for r in read_csv(os.path.join("data", "closes.csv"))}
+    out = ["", "## Settlement check (Coinbase vs the real settlement price)", ""]
+    pairs = []
+    for slug, c in closes.items():
+        r = res.get(slug)
+        if not r:
+            continue
+        cb, fin, ptb = fnum(c.get("cb_avg_last60")), fnum(r.get("final_true")), fnum(r.get("ptb_true"))
+        if None in (cb, fin, ptb):
+            continue
+        pairs.append((cb - fin, ("Up" if cb >= ptb else "Down") != r["winner"], abs(fin - ptb)))
+    if len(pairs) < 2:
+        return out + [f"Not enough settled rounds with a logged close yet ({len(pairs)})."]
+    d = [x for x, _, _ in pairs]
+    m = sum(d) / len(d)
+    sd = math.sqrt(sum((x - m) ** 2 for x in d) / (len(d) - 1))
+    flips = [p for p in pairs if p[1]]
+    near = [p for p in pairs if p[2] < 2 * sd]
+    out += [f"- Rounds compared: {len(pairs)}",
+            f"- Coinbase last-minute average minus settlement price: bias ${m:+.2f}, typical gap ${sd:.2f}, "
+            f"worst ${max(abs(x) for x in d):.2f}",
+            f"- Coinbase would have named the WRONG winner in {len(flips)}/{len(pairs)} rounds "
+            f"({len(flips) / len(pairs):.1%})",
+            f"- Rounds that finished within ${2 * sd:.0f} of the target: {len(near)}; wrong-winner rate there: "
+            f"{sum(p[1] for p in near)}/{len(near) or 1}",
+            "- Close rounds are where our model can be most wrong for reasons that aren't about BTC at all."]
     return out
 
 

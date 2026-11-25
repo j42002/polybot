@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v16"
+VERSION = "polybot agent v17"
 
 import csv
 import json
@@ -91,8 +91,29 @@ FIELDS = [
     "dist", "mom60", "sigma", "model_up", "up_ask", "up_bid", "down_ask", "down_bid",
     "quote_src", "mom_side", "mom_price", "lean_side", "lean_price",
     "edge_side", "edge_price", "edge_ev", "jj_side", "jj_price", "jj_ev", "safe_side", "safe_price", "safe_ev", "pair_sum", "venue", "fee_rate", "version",
-    "ticket_decision", "model_id",
+    "ticket_decision", "model_id", "block_price",
 ]
+CLOSES = os.path.join("data", "closes.csv")
+CLOSE_FIELDS = ["slug", "t_start", "cb_avg_last60", "cb_close", "cb_samples_last60", "logged_utc"]
+
+
+def log_close(buf, t0):
+    """What Coinbase said in the last minute of a round. grade.py compares it with the venue's
+    real settlement price (CF Benchmarks BRTI, 60s average) to measure how often our price
+    source would call a different winner than the one that actually settles."""
+    t_end = t0 + WINDOW
+    vals = [p for ts, p in buf if t_end - 60 <= ts < t_end]
+    row = {"slug": us_slug_for(t0) if VENUE == "us" else slug_for(t0), "t_start": t0,
+           "cb_avg_last60": round(sum(vals) / len(vals), 2) if len(vals) >= 20 else "",
+           "cb_close": round(price_near(buf, t_end), 2) if price_near(buf, t_end) else "", "cb_samples_last60": len(vals),
+           "logged_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+    new = not os.path.exists(CLOSES)
+    os.makedirs("data", exist_ok=True)
+    with open(CLOSES, "a", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=CLOSE_FIELDS)
+        if new:
+            w.writeheader()
+        w.writerow(row)
 
 
 # ---------- pure helpers (unit-tested) ----------
@@ -850,6 +871,7 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
                 if fresh is None or fresh_ev < TICKET_EDGE:
                     print(f"  price moved before send ({best['jj_price']} -> {fresh}) - no ticket")
                     decision = "SKIP_PRICE_MOVED"
+                    row["block_price"] = fresh                 # the price that actually existed when blocked
                 else:
                     best.update(jj_price=fresh, jj_ev=fresh_ev)
                     max_price = round(min(fresh + fresh_ev - TICKET_BUFFER, 0.97), 2)
@@ -966,7 +988,7 @@ def main():
     session = requests.Session()
     jj_done = set()
     buf = deque(maxlen=900)         # ~30 min of 2s samples
-    opens, markets, done = {}, {}, set()
+    opens, markets, done, closed = {}, {}, set(), set()
     first_window = window_start(time.time())
     stop_at = time.time() + RUN_MINUTES * 60
     rows = 0
@@ -1023,6 +1045,13 @@ def main():
         clock.mark("spot")
         t0 = window_start(now)
         left = t0 + WINDOW - now
+        prev = t0 - WINDOW
+        if prev >= first_window and prev not in closed and now - t0 >= 3:
+            closed.add(prev)                                  # round just ended: record Coinbase's last minute
+            try:
+                log_close(buf, prev)
+            except Exception as e:
+                print(f"  close log error: {e!r}")
         if t0 not in opens and now - t0 >= 1:
             # a window that started before we booted has no trustworthy open
             if t0 == first_window:
