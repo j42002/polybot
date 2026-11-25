@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v8"
+VERSION = "polybot agent v9"
 
 import csv
 import json
@@ -568,6 +568,13 @@ def main():
     stop_at = time.time() + RUN_MINUTES * 60
     rows = 0
     last_check = 0.0
+    last_acct = 0.0
+    try:
+        import account_watch
+    except Exception as e:
+        account_watch = None
+        print(f"account watcher unavailable: {e.__class__.__name__}")
+    acct_post = lambda payload: session.post(WEBHOOK, json=payload, timeout=6) if WEBHOOK else None
     while time.time() < stop_at:
         tick = time.time()
         if tick - last_check > 20:
@@ -576,6 +583,12 @@ def main():
                 check_results(session)
             except Exception as e:
                 print(f"  results error: {e!r}")
+        if account_watch and account_watch.enabled() and tick - last_acct > 60:
+            last_acct = tick
+            try:
+                account_watch.check(session, acct_post)
+            except Exception as e:
+                print(f"  account watcher error: {e}")   # path + HTTP code only, no account data
         p = get_spot(session)
         now = time.time()
         if p:
