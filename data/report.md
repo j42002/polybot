@@ -1,99 +1,99 @@
 # polybot report
 
-Updated 2026-11-25 14:02 UTC | 166 checkpoints logged | 125 graded | 31 windows settled
+Updated 2026-11-25 14:57 UTC | 219 checkpoints logged | 155 graded | 39 windows settled
 
 PAPER ONLY. P&L is per $1 share after the taker fee; Total assumes 10 shares per bet. Breakeven hit rate = avg price paid.
 
-## 4:00 left (19 windows)
+## 4:00 left (23 windows)
 
 | Strategy | Bets | Hit | Breakeven | Per bet | 95% CI | Total | Verdict |
 |---|---|---|---|---|---|---|---|
-| Momentum (bet the last-60s direction) | 19 | 63.2% | 65.3% | -0.035 | -0.269 to +0.199 | $-6.69 | INCONCLUSIVE (need 300+) |
-| Lean (bet the side BTC is on now) | 19 | 47.4% | 66.7% | -0.207 | -0.424 to +0.010 | $-39.29 | INCONCLUSIVE (need 300+) |
-| Edge (model beats the ask by 3c+) | 7 | 42.9% | 25.3% | +0.162 | -0.199 to +0.523 | $+11.32 | INCONCLUSIVE (need 300+) |
-| JJ (60-90s in, 35-70c ask, model +4c) | 2 | 50.0% | 47.0% | +0.013 | -0.801 to +0.826 | $+0.25 | INCONCLUSIVE (need 300+) |
+| Momentum (bet the last-60s direction) | 23 | 56.5% | 63.3% | -0.082 | -0.290 to +0.126 | $-18.93 | INCONCLUSIVE (need 300+) |
+| Lean (bet the side BTC is on now) | 23 | 52.2% | 66.1% | -0.154 | -0.355 to +0.047 | $-35.43 | INCONCLUSIVE (need 300+) |
+| Edge (model beats the ask by 3c+) | 11 | 45.5% | 29.0% | +0.148 | -0.129 to +0.425 | $+16.27 | INCONCLUSIVE (need 300+) |
+| JJ (60-90s in, 35-70c ask, model +4c) | 4 | 75.0% | 44.2% | +0.287 | -0.169 to +0.744 | $+11.50 | INCONCLUSIVE (need 300+) |
 | SAFE (model 75%+, 55-85c ask, +4c, 3:00/2:00 left) | 0 | - | - | - | - | - | no bets |
 
-Brier (lower is better): model 0.2599 vs market 0.2570 -> **market is sharper**
+Brier (lower is better): model 0.2480 vs market 0.2504 -> **model is sharper**
 
-## 3:30 left (23 windows)
+## 3:30 left (27 windows)
 
 | Strategy | Bets | Hit | Breakeven | Per bet | 95% CI | Total | Verdict |
 |---|---|---|---|---|---|---|---|
-| Momentum (bet the last-60s direction) | 23 | 78.3% | 62.0% | +0.148 | -0.032 to +0.328 | $+34.06 | INCONCLUSIVE (need 300+) |
-| Lean (bet the side BTC is on now) | 23 | 73.9% | 69.5% | +0.030 | -0.163 to +0.223 | $+6.98 | INCONCLUSIVE (need 300+) |
-| Edge (model beats the ask by 3c+) | 9 | 44.4% | 28.0% | +0.151 | -0.148 to +0.451 | $+13.60 | INCONCLUSIVE (need 300+) |
+| Momentum (bet the last-60s direction) | 27 | 74.1% | 60.1% | +0.124 | -0.040 to +0.288 | $+33.58 | INCONCLUSIVE (need 300+) |
+| Lean (bet the side BTC is on now) | 27 | 77.8% | 69.0% | +0.073 | -0.097 to +0.242 | $+19.62 | INCONCLUSIVE (need 300+) |
+| Edge (model beats the ask by 3c+) | 12 | 41.7% | 28.4% | +0.118 | -0.127 to +0.363 | $+14.16 | INCONCLUSIVE (need 300+) |
 | JJ (60-90s in, 35-70c ask, model +4c) | 1 | 100.0% | 65.0% | +0.339 | -inf to +inf | $+3.39 | INCONCLUSIVE (need 300+) |
 | SAFE (model 75%+, 55-85c ask, +4c, 3:00/2:00 left) | 0 | - | - | - | - | - | no bets |
 
-Brier (lower is better): model 0.2031 vs market 0.2155 -> **model is sharper**
+Brier (lower is better): model 0.1863 vs market 0.2042 -> **model is sharper**
 
-## 3:00 left (26 windows)
+## 3:00 left (32 windows)
 
 | Strategy | Bets | Hit | Breakeven | Per bet | 95% CI | Total | Verdict |
 |---|---|---|---|---|---|---|---|
-| Momentum (bet the last-60s direction) | 26 | 73.1% | 60.4% | +0.113 | -0.048 to +0.275 | $+29.47 | INCONCLUSIVE (need 300+) |
-| Lean (bet the side BTC is on now) | 26 | 61.5% | 71.9% | -0.117 | -0.283 to +0.050 | $-30.30 | INCONCLUSIVE (need 300+) |
-| Edge (model beats the ask by 3c+) | 12 | 41.7% | 30.1% | +0.102 | -0.133 to +0.337 | $+12.19 | INCONCLUSIVE (need 300+) |
+| Momentum (bet the last-60s direction) | 32 | 71.9% | 59.4% | +0.111 | -0.027 to +0.248 | $+35.41 | INCONCLUSIVE (need 300+) |
+| Lean (bet the side BTC is on now) | 32 | 68.8% | 72.1% | -0.047 | -0.193 to +0.099 | $-15.04 | INCONCLUSIVE (need 300+) |
+| Edge (model beats the ask by 3c+) | 16 | 37.5% | 30.7% | +0.053 | -0.138 to +0.244 | $+8.47 | INCONCLUSIVE (need 300+) |
 | JJ (60-90s in, 35-70c ask, model +4c) | 0 | - | - | - | - | - | no bets |
 | SAFE (model 75%+, 55-85c ask, +4c, 3:00/2:00 left) | 0 | - | - | - | - | - | no bets |
 
-Brier (lower is better): model 0.1895 vs market 0.1889 -> **market is sharper**
+Brier (lower is better): model 0.1759 vs market 0.1709 -> **market is sharper**
 
-## 2:00 left (28 windows)
+## 2:00 left (36 windows)
 
 | Strategy | Bets | Hit | Breakeven | Per bet | 95% CI | Total | Verdict |
 |---|---|---|---|---|---|---|---|
-| Momentum (bet the last-60s direction) | 27 | 55.6% | 65.3% | -0.108 | -0.249 to +0.032 | $-29.27 | INCONCLUSIVE (need 300+) |
-| Lean (bet the side BTC is on now) | 27 | 81.5% | 78.7% | +0.017 | -0.127 to +0.161 | $+4.67 | INCONCLUSIVE (need 300+) |
-| Edge (model beats the ask by 3c+) | 16 | 25.0% | 33.6% | -0.098 | -0.284 to +0.089 | $-15.61 | INCONCLUSIVE (need 300+) |
+| Momentum (bet the last-60s direction) | 35 | 54.3% | 62.9% | -0.097 | -0.216 to +0.022 | $-33.93 | INCONCLUSIVE (need 300+) |
+| Lean (bet the side BTC is on now) | 35 | 85.7% | 78.6% | +0.060 | -0.059 to +0.178 | $+20.93 | INCONCLUSIVE (need 300+) |
+| Edge (model beats the ask by 3c+) | 23 | 26.1% | 28.9% | -0.040 | -0.186 to +0.107 | $-9.17 | INCONCLUSIVE (need 300+) |
 | JJ (60-90s in, 35-70c ask, model +4c) | 0 | - | - | - | - | - | no bets |
 | SAFE (model 75%+, 55-85c ask, +4c, 3:00/2:00 left) | 2 | 100.0% | 70.0% | +0.281 | +0.149 to +0.413 | $+5.61 | INCONCLUSIVE (need 300+) |
 
-Brier (lower is better): model 0.1442 vs market 0.1365 -> **market is sharper**
+Brier (lower is better): model 0.1284 vs market 0.1271 -> **market is sharper**
 
-## 1:00 left (29 windows)
+## 1:00 left (37 windows)
 
 | Strategy | Bets | Hit | Breakeven | Per bet | 95% CI | Total | Verdict |
 |---|---|---|---|---|---|---|---|
-| Momentum (bet the last-60s direction) | 22 | 54.5% | 47.2% | +0.064 | -0.064 to +0.192 | $+14.07 | INCONCLUSIVE (need 300+) |
-| Lean (bet the side BTC is on now) | 18 | 88.9% | 76.6% | +0.112 | -0.037 to +0.261 | $+20.14 | INCONCLUSIVE (need 300+) |
-| Edge (model beats the ask by 3c+) | 21 | 19.0% | 16.8% | +0.015 | -0.111 to +0.141 | $+3.08 | INCONCLUSIVE (need 300+) |
+| Momentum (bet the last-60s direction) | 27 | 51.9% | 46.9% | +0.040 | -0.071 to +0.150 | $+10.72 | INCONCLUSIVE (need 300+) |
+| Lean (bet the side BTC is on now) | 23 | 91.3% | 78.8% | +0.115 | -0.003 to +0.232 | $+26.34 | INCONCLUSIVE (need 300+) |
+| Edge (model beats the ask by 3c+) | 29 | 17.2% | 16.9% | -0.004 | -0.100 to +0.092 | $-1.10 | INCONCLUSIVE (need 300+) |
 | JJ (60-90s in, 35-70c ask, model +4c) | 0 | - | - | - | - | - | no bets |
 | SAFE (model 75%+, 55-85c ask, +4c, 3:00/2:00 left) | 0 | - | - | - | - | - | no bets |
 
-Brier (lower is better): model 0.0797 vs market 0.0847 -> **model is sharper**
+Brier (lower is better): model 0.0764 vs market 0.0716 -> **market is sharper**
 
 ## Price-to-beat proxy (Coinbase vs real Chainlink)
 
-- 60s average: n=31, bias $-1.21, sd $2.72 (set BASIS_SD near 3)
-- spot at open: n=31, bias $-5.78, sd $26.15 (set BASIS_SD near 26)
+- 60s average: n=39, bias $-0.96, sd $2.47 (set BASIS_SD near 2)
+- spot at open: n=39, bias $-6.37, sd $26.88 (set BASIS_SD near 27)
 
 ## Is the win chance honest? (calibration)
 
 | Bot said | Rounds | Actually won |
 |---|---|---|
-| 50%-60% | 28 | 54% |
-| 60%-70% | 28 | 61% |
-| 70%-80% | 25 | 72% |
-| 80%-90% | 33 | 97% |
+| 50%-60% | 36 | 61% |
+| 60%-70% | 34 | 68% |
+| 70%-80% | 30 | 77% |
+| 80%-90% | 44 | 98% |
 | 90%-100% | 11 | 91% |
 
 If 'Actually won' sits well below 'Bot said', the model is overconfident.
 
 ## Model tuning
 
-- Model volatility: default x1.4 until 150 settled checks (125 so far)
+- Model volatility fitted on 155 settled checks: x0.9 (Brier 0.1443)
 
 ## Ticket speed
 
-- Tickets: 1 (1 fully watched)
+- Tickets: 2 (2 fully watched)
 - Price read → Discord sent: median 1.9s
-- Discord post time: median 891 ms
+- Discord post time: median 951 ms
 - Price change 10s after ticket: median +5.0 points
-- Price change 30s after ticket: median +5.0 points
-- Price change 60s after ticket: median +5.0 points
-- Still buyable 30s later: 1/1 (100%) · expired: 0
+- Price change 30s after ticket: median +45.0 points
+- Price change 60s after ticket: median +45.0 points
+- Still buyable 30s later: 1/2 (50%) · expired: 1
 
 ## Gemini second opinion
 
