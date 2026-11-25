@@ -365,7 +365,7 @@ def test_ticket():
     """Send one sample ticket so you can check Discord delivery. Marked TEST."""
     import sys
     row = {"jj_side": "Up", "jj_price": 0.52, "jj_ev": 0.061, "model_up": 0.594,
-           "secs_left": 240, "t_start": window_start(time.time()), "slug": "TEST-ticket-not-a-real-bet",
+           "secs_left": 240, "t_start": window_start(time.time()), "slug": slug_for(window_start(time.time())),
            "dist": 18.0, "mom60": 7.0}
     p = ticket_payload(row, load_stats())
     p["content"] = "TEST TICKET - delivery check only, not a signal."
