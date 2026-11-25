@@ -354,5 +354,22 @@ def main():
     print(f"done | {rows} checkpoint rows logged to {DATA} | price samples {len(buf)}")
 
 
+def test_ticket():
+    """Send one sample ticket so you can check Discord delivery. Marked TEST."""
+    import sys
+    row = {"jj_side": "Up", "jj_price": 0.52, "jj_ev": 0.061, "model_up": 0.594,
+           "secs_left": 240, "t_start": window_start(time.time()), "slug": "TEST-ticket-not-a-real-bet",
+           "dist": 18.0, "mom60": 7.0}
+    p = ticket_payload(row, load_stats())
+    p["content"] = "TEST TICKET - delivery check only, not a signal."
+    if not WEBHOOK:
+        sys.exit("DISCORD_WEBHOOK secret is missing")
+    r = requests.post(WEBHOOK, json=p, timeout=8)
+    print(f"test ticket -> Discord HTTP {r.status_code} (204 = delivered)")
+    if r.status_code >= 300:
+        sys.exit(r.text[:300])
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    test_ticket() if "--test-ticket" in sys.argv else main()
