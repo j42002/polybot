@@ -6,13 +6,13 @@ Every 5-minute window it:
   1. records a proxy "price to beat" from Coinbase BTC-USD (the real one is a
      Chainlink 60s TWAP that Polymarket only publishes after the window closes),
   2. at 3:00, 2:00 and 1:00 left, reads the live Polymarket odds (CLOB order
-     book, Gamma fallback) and BTC momentum/volatility,
+     book only) and BTC momentum/volatility,
   3. paper-bets three strategies and appends one row per checkpoint to
      data/checkpoints.csv.
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v1"
+VERSION = "polybot agent v2"
 
 import csv
 import json
@@ -139,19 +139,6 @@ def get_market(session, slug):
     return {"up_token": ids.get("Up"), "down_token": ids.get("Down"), "slug": slug}
 
 
-def gamma_quotes(session, slug):
-    r = session.get(GAMMA, params={"slug": slug}, headers=HEADERS, timeout=8)
-    r.raise_for_status()
-    m = r.json()[0]["markets"][0]
-    ask, bid = m.get("bestAsk"), m.get("bestBid")
-    q = {"quote_src": "gamma"}
-    q["up_ask"] = float(ask) if ask is not None else None
-    q["up_bid"] = float(bid) if bid is not None else None
-    q["down_ask"] = round(1 - q["up_bid"], 4) if q["up_bid"] is not None else None
-    q["down_bid"] = round(1 - q["up_ask"], 4) if q["up_ask"] is not None else None
-    return q
-
-
 def book_top(session, token):
     r = session.get(CLOB_BOOK, params={"token_id": token}, headers=HEADERS, timeout=6)
     r.raise_for_status()
@@ -162,14 +149,16 @@ def book_top(session, token):
 
 
 def get_quotes(session, mkt):
+    """Live order book only. Gamma's cached bestAsk was seen 50c off the real book
+    near the close, so it is never used for a bet. A side with no asks stays None
+    (nothing to buy there), and every strategy skips it."""
     try:
         ua, ub = book_top(session, mkt["up_token"])
         da, db = book_top(session, mkt["down_token"])
-        if ua is not None and da is not None:
-            return {"quote_src": "clob", "up_ask": ua, "up_bid": ub, "down_ask": da, "down_bid": db}
+        return {"quote_src": "clob", "up_ask": ua, "up_bid": ub, "down_ask": da, "down_bid": db}
     except Exception as e:
-        print(f"  clob book failed ({e.__class__.__name__}), using gamma")
-    return gamma_quotes(session, mkt["slug"])
+        print(f"  clob book failed ({e.__class__.__name__}) - no quotes this checkpoint")
+        return {"quote_src": "error", "up_ask": None, "up_bid": None, "down_ask": None, "down_bid": None}
 
 
 # ---------- logging ----------

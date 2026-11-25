@@ -14,7 +14,7 @@ Verdict rules are fixed in advance so the goalposts can't move:
   95% CI entirely below 0  -> LOSES
   otherwise                -> NO EDGE
 """
-VERSION = "polybot grader v1"
+VERSION = "polybot grader v2"
 
 import csv
 import json
@@ -126,7 +126,8 @@ def brier(pairs):
 
 def build_report(rows, results):
     res = {r["slug"]: r for r in results}
-    graded = [r for r in rows if r["slug"] in res]
+    # only rows priced from the live order book count (v1 rows priced from Gamma's stale cache are dropped)
+    graded = [r for r in rows if r["slug"] in res and r.get("quote_src") == "clob"]
     lines = [f"# polybot report", "",
              f"Updated {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} | "
              f"{len(rows)} checkpoints logged | {len(graded)} graded | "
