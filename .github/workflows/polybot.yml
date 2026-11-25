@@ -42,8 +42,6 @@ jobs:
         env:
           RUN_MINUTES: ${{ github.event.inputs.minutes || '55' }}
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          POLYMARKET_KEY_ID: ${{ secrets.POLYMARKET_KEY_ID }}
-          POLYMARKET_SECRET_KEY: ${{ secrets.POLYMARKET_SECRET_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       - name: grade
         run: python grade.py

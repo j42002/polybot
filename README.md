@@ -37,3 +37,10 @@ GitHub Actions starts it every 20 minutes and each run lasts 55 minutes, so it r
 - **Gemini (automatic, free tier):** add a `GEMINI_API_KEY` secret made in Google AI Studio from a project with no billing account. Gemini gives AGREE/PASS on each ticket (never delays or blocks it) and writes one note per run on `data/team_board.md`. It is capped at 150 calls/day and paused until midnight Pacific after any 429. Only public market numbers are sent, because Google may use free-tier prompts to improve its products.
 - **ChatGPT (by hand, free app):** `share.py` posts a scoreboard picture plus a ready prompt to Discord once a day after 8 PM ET. The Actions workflow "scoreboard for ChatGPT" does the same on demand. Paste ChatGPT's reply into `data/chatgpt_notes.md`; Gemini reads it.
 - `grade.py` scores Gemini: win rate and P&L of tickets it agreed with vs passed on.
+
+## Research integrity (v16)
+- An alert counts only if Discord confirms delivery (2xx + message id). Failed alerts are logged as UNDELIVERED, never watched, and never a trade.
+- Every checkpoint logs its ticket decision (SENT, UNDELIVERED, SKIP_CHOP, SKIP_SPIKE, SKIP_PRICE_MOVED, EDGE_CAP, BELOW_BAR, ALREADY_TICKETED, NO_SIGNAL). report.md shows the full funnel and what each filter blocked (hypothetical).
+- Forward test: every row carries a model_id. A model is judged only on rounds it predicted live. Those rounds are never used to fit anything.
+- Ask size is logged when the venue reports it, but never used: its units are not verified.
+- Account watcher: OFF. No Polymarket keys are read by any workflow.

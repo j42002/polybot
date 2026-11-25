@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v15"
+VERSION = "polybot agent v16"
 
 import csv
 import json
@@ -52,7 +52,10 @@ TICKET_FIELDS = ["t_start", "slug", "tier", "side", "price", "ev", "sent_utc", "
                  "ask_size", "secs_left_sent", "expired_why",
                  "ask_5_at", "ask_10_at", "ask_20_at", "ask_30_at", "ask_45_at", "ask_60_at",
                  "fill_5", "fill_10", "fill_20", "fill_30", "status_5", "status_10", "status_20", "status_30",
-                 "pnl10_5", "pnl10_10", "pnl10_20", "pnl10_30"]
+                 "pnl10_5", "pnl10_10", "pnl10_20", "pnl10_30",
+                 # v16: delivery proof, liquidity (unverified units), model id for forward tests
+                 "delivered", "http_status", "deliver_err", "expire_stamped",
+                 "ask_size_5", "ask_size_10", "ask_size_20", "ask_size_30", "size_ok_30", "model_id"]
 # v10 latency rules (Jacob's 6:40 recording: SAFE DOWN at 71c, 91%, sent with 2:00 left;
 # by the time the app loaded DOWN was 94-96c with 1:14 left, then BTC reversed and Up won).
 TICKET_TIERS = ("JJ",)             # SAFE tickets paused: late-window favorites move faster than a human
@@ -62,6 +65,7 @@ WATCH_AT = (5, 10, 20, 30, 45, 60) # seconds after sending: re-read the price, e
 FILL_DELAYS = (5, 10, 20, 30)      # paper fills scored at each simulated reaction time
 LATE_TOL = 3.0                     # a price check more than 3s late is not trusted for a fill
 SPOT_META = {}                     # timing of the latest Coinbase read
+LIQUIDITY_VERIFIED = False         # ask-size units not yet confirmed against the app: size is logged, never used
 CHOP_RATIO = 2.0                   # no ticket if the last 60s are 2x more volatile than the last 10 min
 WATCHERS = []
 WEBHOOK = os.getenv("DISCORD_WEBHOOK", "")
@@ -87,6 +91,7 @@ FIELDS = [
     "dist", "mom60", "sigma", "model_up", "up_ask", "up_bid", "down_ask", "down_bid",
     "quote_src", "mom_side", "mom_price", "lean_side", "lean_price",
     "edge_side", "edge_price", "edge_ev", "jj_side", "jj_price", "jj_ev", "safe_side", "safe_price", "safe_ev", "pair_sum", "venue", "fee_rate", "version",
+    "ticket_decision", "model_id",
 ]
 
 
@@ -144,6 +149,12 @@ def sigma_per_sec(buf, now, lookback=600, min_samples=60):
             sq += math.log(p1 / p0) ** 2
             dt += t1 - t0
     return math.sqrt(sq / dt) if dt > 0 else None
+
+
+def model_id():
+    """Identifies the exact prediction model. Forward tests score each model only on rounds
+    it predicted live, after it was deployed: data no fit or change has ever looked at."""
+    return f"rw-m{SIGMA_MULT:g}-c{PROB_CAP:g}-b{BASIS_SD:g}"
 
 
 def load_tune():
@@ -479,10 +490,13 @@ def card_png(row, prices, stats):
 
 
 def post_ticket(session, row, prices=None):
-    """Returns (message_id, t_sent, discord_ms). message_id lets us edit the ticket to EXPIRED later."""
+    """Send the ticket. Returns a delivery record. delivered=True ONLY if Discord answered 2xx
+    with a message id: an alert that never reached Jacob can never count as a simulated trade."""
+    out = {"delivered": False, "mid": None, "t_sent": time.time(), "ms": None, "http": None, "err": ""}
     if not WEBHOOK:
         print("  (no DISCORD_WEBHOOK set - ticket not sent)")
-        return None, time.time(), None
+        out["err"] = "no_webhook"
+        return out
     stats = load_stats(row.get("tier", "JJ").lower())
     payload = ticket_payload(row, stats)
     try:
@@ -497,31 +511,42 @@ def post_ticket(session, row, prices=None):
         else:
             r = session.post(WEBHOOK + "?wait=true", json=payload, timeout=6)
         t_done = time.time()
-        mid = None
+        out.update(t_sent=t_done, ms=int((t_done - t_post) * 1000), http=r.status_code)
         try:
-            mid = r.json().get("id")
+            out["mid"] = r.json().get("id")
         except Exception:
             pass
-        print(f"  ticket sent to Discord ({r.status_code}) in {int((t_done - t_post) * 1000)} ms")
-        return mid, t_done, int((t_done - t_post) * 1000)
+        out["delivered"] = 200 <= r.status_code < 300 and bool(out["mid"])
+        if not out["delivered"]:
+            out["err"] = f"http_{r.status_code}" if not 200 <= r.status_code < 300 else "no_message_id"
+        print(f"  ticket {'delivered' if out['delivered'] else 'NOT delivered'} ({r.status_code}) in {out['ms']} ms")
     except Exception as e:
+        out.update(t_sent=time.time(), err=e.__class__.__name__)
         print(f"  ticket failed: {e!r}")
-        return None, time.time(), None
+    return out
 
 
 def edit_ticket(session, msg_id, text):
-    """Stamp a line above an already-sent ticket (the card stays)."""
+    """Stamp a line above an already-sent ticket (the card stays). True if Discord accepted it."""
     if not (WEBHOOK and msg_id):
-        return
+        return False
     try:
-        session.patch(f"{WEBHOOK}/messages/{msg_id}", json={"content": text}, timeout=6)
+        r = session.patch(f"{WEBHOOK}/messages/{msg_id}", json={"content": text}, timeout=6)
+        return 200 <= r.status_code < 300
     except Exception as e:
         print(f"  ticket edit failed: {e!r}")
+        return False
 
 
 def side_ask(session, mkt, side):
+    return side_quote(session, mkt, side)[0]
+
+
+def side_quote(session, mkt, side):
+    """(ask, size at the ask or None) for one side."""
     q = get_us_quotes(session, mkt)
-    return q.get("up_ask" if side == "Up" else "down_ask")
+    k = "up" if side == "Up" else "down"
+    return q.get(f"{k}_ask"), q.get(f"{k}_ask_size")
 
 
 def choppy(buf, now):
@@ -573,14 +598,15 @@ def run_watchers(session, now):
             due = due[-1:]
         for sec in due:
             try:
-                ask = side_ask(session, w["mkt"], w["side"])
+                ask, size = side_quote(session, w["mkt"], w["side"])
             except Exception:
-                ask = None
+                ask, size = None, None
             w["asks"][sec], w["at"][sec] = ask, round(time.time() - w["t_sent"], 2)
+            w.setdefault("sizes", {})[sec] = size
             if w["expired_s"] is None and (ask is None or ask > w["max_price"]):
                 w["expired_s"], w["expired_why"] = sec, ("no_quote" if ask is None else "price")
                 now_txt = f"{ask * 100:.0f}%" if ask else "unavailable"
-                edit_ticket(session, w["msg_id"],
+                w["stamped"] = edit_ticket(session, w["msg_id"],
                             f"\u26d4 **EXPIRED after {sec}s** \u2014 {w['side']} is now {now_txt} "
                             f"(limit {w['max_price'] * 100:.0f}%). Don't buy this one.")
                 print(f"  ticket {w['slug']} expired at +{sec}s (ask {ask})")
@@ -594,7 +620,11 @@ def finish_watcher(w):
         w["at"].setdefault(sec, None)
     upd = {**{f"ask_{k}": v for k, v in w["asks"].items()},
            **{f"ask_{k}_at": v for k, v in w["at"].items()},
-           "expired_s": w["expired_s"], "expired_why": w.get("expired_why") or ""}
+           "expired_s": w["expired_s"], "expired_why": w.get("expired_why") or "",
+           "expire_stamped": "" if w["expired_s"] is None else bool(w.get("stamped")),
+           **{f"ask_size_{k}": w.get("sizes", {}).get(k) for k in FILL_DELAYS}}
+    sz, px30 = w.get("sizes", {}).get(HUMAN_DELAY), w["asks"].get(HUMAN_DELAY)
+    upd["size_ok_30"] = "" if sz is None or not px30 else (sz >= 10 / px30)     # logged only: units unverified
     for d in FILL_DELAYS:
         px, st = fill_check(w["asks"], w["at"], w["max_price"], w["expired_s"], d)
         upd[f"fill_{d}"], upd[f"status_{d}"] = (px if px is not None else ""), st
@@ -658,6 +688,11 @@ def check_results(session):
     changed = False
     for r in rows:
         if r.get("result") or time.time() < int(r["t_start"]) + WINDOW + 45:
+            continue
+        if r.get("status") == "UNDELIVERED":               # Jacob never got it: not a trade, no result post
+            r["result"], r["pnl10"] = "UNDELIVERED", 0
+            r["settled_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            changed = True
             continue
         try:
             winner = get_us_winner(session, r["slug"]) if VENUE == "us" else None
@@ -775,63 +810,85 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
         "pair_sum": round(q["up_ask"] + q["down_ask"], 4) if q.get("up_ask") and q.get("down_ask") else None,
         "version": VERSION,
     }
-    append_row(row)
-    recent = [(ts, p) for ts, p in buf if ts >= now - 180]
-    if row["jj_side"]:
-        jj_done.add(t0)
-    if row["safe_side"]:
-        jj_done.add(("safe", t0))
-    # ONE ticket per round, strongest only, inside a plausible edge band, re-priced right before sending
-    cands = []
-    if "JJ" in TICKET_TIERS and row["jj_side"] and TICKET_EDGE <= row["jj_ev"] <= TICKET_EDGE_MAX:
-        cands.append(dict(row, tier="JJ"))
-    if "SAFE" in TICKET_TIERS and row["safe_side"] and TICKET_EDGE <= row["safe_ev"] <= TICKET_EDGE_MAX:
-        cands.append(dict(row, tier="SAFE", jj_side=row["safe_side"],
-                          jj_price=row["safe_price"], jj_ev=row["safe_ev"]))
-    big = max([row["jj_ev"] or 0, row["safe_ev"] or 0])
-    if big > TICKET_EDGE_MAX:
-        print(f"  edge {big:.0%} above {TICKET_EDGE_MAX:.0%} cap - treated as stale/moving, no ticket")
-    if cands and ("ticket", t0) not in jj_done:
-        best = max(cands, key=lambda r: r["jj_ev"])
-        side = best["jj_side"]
-        fair = p_up if side == "Up" else 1 - p_up
-        if choppy(buf, now):
-            print("  last 60s too choppy (reversal risk) - no ticket")
-        elif spiked(spot, sigma, mom60):
-            print(f"  sharp 60s move (${mom60:+,.0f}) - reversal risk, no ticket")
-        elif us is None:
-            pass
-        else:
-            fq = get_us_quotes(session, us["mkt"])               # latest executable price, timed
-            fresh = fq.get("up_ask" if side == "Up" else "down_ask")
-            fresh_ev = round(fair - fresh - fee_per_share(fresh), 4) if fresh else None
-            if fresh is None or fresh_ev < TICKET_EDGE:
-                print(f"  price moved before send ({best['jj_price']} -> {fresh}) - no ticket")
+    decision = "NO_SIGNAL"
+    row["model_id"] = model_id()
+    try:
+        recent = [(ts, p) for ts, p in buf if ts >= now - 180]
+        if row["jj_side"]:
+            jj_done.add(t0)
+        if row["safe_side"]:
+            jj_done.add(("safe", t0))
+        # ONE ticket per round, strongest only, inside a plausible edge band, re-priced right before sending
+        cands = []
+        if "JJ" in TICKET_TIERS and row["jj_side"] and TICKET_EDGE <= row["jj_ev"] <= TICKET_EDGE_MAX:
+            cands.append(dict(row, tier="JJ"))
+        if "SAFE" in TICKET_TIERS and row["safe_side"] and TICKET_EDGE <= row["safe_ev"] <= TICKET_EDGE_MAX:
+            cands.append(dict(row, tier="SAFE", jj_side=row["safe_side"],
+                              jj_price=row["safe_price"], jj_ev=row["safe_ev"]))
+        big = max([row["jj_ev"] or 0, row["safe_ev"] or 0])
+        if big > TICKET_EDGE_MAX:
+            print(f"  edge {big:.0%} above {TICKET_EDGE_MAX:.0%} cap - treated as stale/moving, no ticket")
+            decision = "EDGE_CAP"
+        if cands and ("ticket", t0) in jj_done:
+            decision = "ALREADY_TICKETED"
+        if cands and ("ticket", t0) not in jj_done:
+            best = max(cands, key=lambda r: r["jj_ev"])
+            side = best["jj_side"]
+            fair = p_up if side == "Up" else 1 - p_up
+            if choppy(buf, now):
+                print("  last 60s too choppy (reversal risk) - no ticket")
+                decision = "SKIP_CHOP"
+            elif spiked(spot, sigma, mom60):
+                print(f"  sharp 60s move (${mom60:+,.0f}) - reversal risk, no ticket")
+                decision = "SKIP_SPIKE"
+            elif us is None:
+                decision = "NO_US_MARKET"
             else:
-                best.update(jj_price=fresh, jj_ev=fresh_ev)
-                max_price = round(min(fresh + fresh_ev - TICKET_BUFFER, 0.97), 2)
-                jj_done.add(("ticket", t0))
-                t_decide = time.time()
-                mid, t_sent, ms = post_ticket(session, best, recent)
-                ms_ = lambda a, b: round((a - b) * 1000) if a and b else ""
-                log_ticket(best, {"max_price": max_price, "secs_left": secs_left, "t_spot": round(t_spot, 3),
-                                  "t_quote": round(t_quote, 3), "t_decide": round(t_decide, 3),
-                                  "t_sent": round(t_sent, 3), "discord_ms": ms, "msg_id": mid, "fresh_ask": fresh,
-                                  "spot_exch_ts": round(spot_meta["exch"], 3) if spot_meta.get("exch") else "",
-                                  "spot_lag_ms": ms_(spot_meta.get("recv"), spot_meta.get("exch")),
-                                  "spot_rtt_ms": ms_(spot_meta.get("recv"), spot_meta.get("req")),
-                                  "quote_rtt_ms": ms_(q.get("t_recv"), q.get("t_req")),
-                                  "book_ts": fq.get("book_ts") or "", "t_fresh": round(fq["t_recv"], 3),
-                                  "fresh_rtt_ms": ms_(fq.get("t_recv"), fq.get("t_req")),
-                                  "ask_size": fq.get("up_ask_size" if side == "Up" else "down_ask_size") or "",
-                                  "secs_left_sent": round(t0 + WINDOW - t_sent, 1)})
-                if team:
-                    team.second_opinion(t0, best, secs_left, recent)      # background: never delays the ticket
-                WATCHERS.append({"t_start": t0, "slug": best["slug"], "mkt": us["mkt"], "side": side,
-                                 "max_price": max_price, "msg_id": mid, "t_sent": t_sent,
-                                 "asks": {}, "at": {}, "expired_s": None})
-    elif row["jj_side"] or row["safe_side"]:
-        print("  signal below ticket bar or round already ticketed - logged, not sent")
+                fq = get_us_quotes(session, us["mkt"])               # latest executable price, timed
+                fresh = fq.get("up_ask" if side == "Up" else "down_ask")
+                fresh_ev = round(fair - fresh - fee_per_share(fresh), 4) if fresh else None
+                if fresh is None or fresh_ev < TICKET_EDGE:
+                    print(f"  price moved before send ({best['jj_price']} -> {fresh}) - no ticket")
+                    decision = "SKIP_PRICE_MOVED"
+                else:
+                    best.update(jj_price=fresh, jj_ev=fresh_ev)
+                    max_price = round(min(fresh + fresh_ev - TICKET_BUFFER, 0.97), 2)
+                    jj_done.add(("ticket", t0))
+                    t_decide = time.time()
+                    dl = post_ticket(session, best, recent)
+                    mid, t_sent, ms = dl["mid"], dl["t_sent"], dl["ms"]
+                    decision = "SENT" if dl["delivered"] else "UNDELIVERED"
+                    ms_ = lambda a, b: round((a - b) * 1000) if a and b else ""
+                    log_ticket(best, {"max_price": max_price, "secs_left": secs_left, "t_spot": round(t_spot, 3),
+                                      "t_quote": round(t_quote, 3), "t_decide": round(t_decide, 3),
+                                      "t_sent": round(t_sent, 3), "discord_ms": ms, "msg_id": mid, "fresh_ask": fresh,
+                                      "spot_exch_ts": round(spot_meta["exch"], 3) if spot_meta.get("exch") else "",
+                                      "spot_lag_ms": ms_(spot_meta.get("recv"), spot_meta.get("exch")),
+                                      "spot_rtt_ms": ms_(spot_meta.get("recv"), spot_meta.get("req")),
+                                      "quote_rtt_ms": ms_(q.get("t_recv"), q.get("t_req")),
+                                      "book_ts": fq.get("book_ts") or "", "t_fresh": round(fq["t_recv"], 3) if fq.get("t_recv") else "",
+                                      "fresh_rtt_ms": ms_(fq.get("t_recv"), fq.get("t_req")),
+                                      "ask_size": fq.get("up_ask_size" if side == "Up" else "down_ask_size") or "",
+                                      "secs_left_sent": round(t0 + WINDOW - t_sent, 1),
+                                      "delivered": dl["delivered"], "http_status": dl["http"] or "",
+                                      "deliver_err": dl["err"], "model_id": model_id(),
+                                      # an undelivered alert is never watched and never a trade
+                                      **({} if dl["delivered"] else {"status": "UNDELIVERED"})})
+                    if not dl["delivered"]:
+                        print("  alert NOT delivered - logged as UNDELIVERED, never a simulated trade")
+                    elif team:
+                        team.second_opinion(t0, best, secs_left, recent)      # background: never delays the ticket
+                    if dl["delivered"]:
+                        WATCHERS.append({"t_start": t0, "slug": best["slug"], "mkt": us["mkt"], "side": side,
+                                         "max_price": max_price, "msg_id": mid, "t_sent": t_sent,
+                                         "asks": {}, "at": {}, "expired_s": None})
+        elif row["jj_side"] or row["safe_side"]:
+            print("  signal below ticket bar or round already ticketed - logged, not sent")
+            if decision == "NO_SIGNAL":
+                decision = "BELOW_BAR"
+    finally:
+        row["ticket_decision"] = decision
+        append_row(row)                                   # logged after the decision, even if it failed
     print(f"  {row['slug']} {secs_left}s left | dist {row['dist']:+} | model Up {p_up:.0%} "
           f"| market Up ask {q.get('up_ask')} | mom={picks['mom'][0]} lean={picks['lean'][0]} edge={picks['edge'][0]} jj={picks['jj'][0]} safe={picks['safe'][0]}")
     return row
@@ -915,11 +972,12 @@ def main():
     rows = 0
     last_check = 0.0
     last_acct = 0.0
-    try:
-        import account_watch
-    except Exception as e:
-        account_watch = None
-        print(f"account watcher unavailable: {e.__class__.__name__}")
+    account_watch = None                  # OFF by team decision 2026-11-25: paper research needs no trading-capable key
+    if os.getenv("ACCOUNT_WATCH") == "1":
+        try:
+            import account_watch
+        except Exception as e:
+            print(f"account watcher unavailable: {e.__class__.__name__}")
     if team and team.enabled():
         print(f"team: Gemini free-tier second opinions on (cap {team.DAILY_CAP}/day)")
     acct_post = lambda payload: session.post(WEBHOOK, json=payload, timeout=6) if WEBHOOK else None

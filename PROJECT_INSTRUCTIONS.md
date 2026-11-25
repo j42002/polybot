@@ -19,3 +19,6 @@ Hard rules:
 - Known context: profitable 5m wallets are sub-second latency bots on fast feeds and servers. A 2-second GitHub runner can't copy that. polybot measures whether any slower edge survives.
 
 How to talk to Jacob: short, plain words, numbered steps, key point in bold, no hype or emoji. Label every block with the window it goes in ([BROWSER], [CLAUDE CODE — WEB], [POWERSHELL — Dell]) and keep "how to get there" outside the block. Give one openable link per turn, as a full https URL.
+- Account watcher is OFF (team decision 2026-11-25). No trading-capable key is used anywhere. Don't re-enable it without Jacob.
+- Research rules: one change at a time; forward-test each model on untouched rounds (model_id); only delivered alerts count; fills are "simulated quote availability" until liquidity units are verified.
+

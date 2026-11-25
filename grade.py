@@ -222,7 +222,7 @@ def build_report(rows, results):
                          f"(set BASIS_SD near {sd:.0f})")
     best, info = fit_sigma(graded, res)
     tune = tune_lines(best, info)
-    lines += calibration_lines(graded, res) + ["", "## Model tuning", ""] + tune + honest_lines() + latency_lines() + loop_lines() + team_lines()
+    lines += calibration_lines(graded, res) + ["", "## Model tuning", ""] + tune + forward_lines(graded, res) + funnel_lines(graded, res) + honest_lines() + latency_lines() + loop_lines() + team_lines()
     lines += ["", f"_{VERSION}_"]
     return "\n".join(lines)
 
@@ -268,6 +268,9 @@ def fit_sigma(graded, res):
     """Fit the volatility multiplier on OLD markets, judge it only on NEW markets it never saw.
     It replaces the default only if it beats the default out of sample."""
     import agent
+    current = agent.model_id()
+    fwd = {r["slug"] for r in graded if r.get("model_id") == current}
+    graded = [r for r in graded if r["slug"] not in fwd]   # forward rounds of the live model stay untouched
     train_s, test_s = split_markets(graded)
     def rows_for(slugs):
         out = []
@@ -284,7 +287,8 @@ def fit_sigma(graded, res):
             out.append((spot, ptb, sig, left, 1.0 if res[r["slug"]]["winner"] == "Up" else 0.0, mid))
         return out
     train, test = rows_for(train_s), rows_for(test_s)
-    info = {"train_markets": len(train_s), "test_markets": len(test_s), "train_rows": len(train), "test_rows": len(test)}
+    info = {"train_markets": len(train_s), "test_markets": len(test_s), "train_rows": len(train), "test_rows": len(test),
+            "forward_markets_excluded": len(fwd)}
     if len(train_s) < TUNE_MIN_MARKETS or len(test_s) < TUNE_MIN_MARKETS // 2:
         with open(TUNE, "w", encoding="utf-8") as f:           # overwrite any old in-sample fit with the default
             json.dump({"sigma_mult": DEFAULT_MULT, "adopted": False, "reason": "not enough markets", **info}, f)
@@ -303,8 +307,10 @@ def fit_sigma(graded, res):
 
 
 def tune_lines(best, info):
-    out = [f"- Split by market, oldest first: train {info['train_markets']} markets ({info['train_rows']} checks), "
-           f"test {info['test_markets']} markets ({info['test_rows']} checks). Test markets are never used for fitting."]
+    out = [f"- Development data, split by market, oldest first: train {info['train_markets']} markets "
+           f"({info['train_rows']} checks), test {info['test_markets']} markets ({info['test_rows']} checks).",
+           f"- {info.get('forward_markets_excluded', 0)} rounds predicted live by the current model are a forward test: "
+           "never used to fit or choose anything (see 'Forward test')."]
     if best is None:
         out.append(f"- Not fitted yet: needs {TUNE_MIN_MARKETS} train + {TUNE_MIN_MARKETS // 2} test markets. "
                    f"Default volatility x{DEFAULT_MULT} stays.")
@@ -406,6 +412,76 @@ def honest_lines():
     return out
 
 
+def forward_lines(graded, res):
+    """Each model is judged only on rounds it predicted live after deployment.
+    No fit, test or change has looked at these rounds, so this is the honest out-of-sample score."""
+    out = ["", "## Forward test (untouched data)", ""]
+    by = {}
+    for r in graded:
+        if r.get("model_id"):
+            by.setdefault(r["model_id"], []).append(r)
+    if not by:
+        return out + ["No rounds logged with a model id yet (v16+)."]
+    out += ["| Model | Separate markets | Checks | Model Brier | Market Brier | Sharper |", "|---|---|---|---|---|---|"]
+    for mid, rows in sorted(by.items()):
+        model, market = [], []
+        for r in rows:
+            y = 1.0 if res[r["slug"]]["winner"] == "Up" else 0.0
+            mu, ua, ub = fnum(r.get("model_up")), fnum(r.get("up_ask")), fnum(r.get("up_bid"))
+            if mu is not None and ua is not None:
+                model.append((mu, y))
+                market.append(((ua + ub) / 2 if ub is not None else ua, y))
+        bm, bk = brier(model), brier(market)
+        n_m = len({r["slug"] for r in rows})
+        sharper = "-" if bm is None else ("model" if bm < bk else "market")
+        out.append(f"| {mid} | {n_m} | {len(rows)} | {bm if bm is None else round(bm, 4)} | "
+                   f"{bk if bk is None else round(bk, 4)} | {sharper} |")
+    out.append("- Read only after 100+ separate markets per model. Brier: lower is better.")
+    return out
+
+
+def funnel_lines(graded, res):
+    """Research dashboard: every step from 'market observed' to 'simulated fill', kept separate."""
+    t = read_csv(os.path.join("data", "tickets.csv"))
+    out = ["", "## Research dashboard (funnel)", ""]
+    dec = {}
+    for r in graded:
+        if r.get("ticket_decision"):
+            dec.setdefault(r["slug"], []).append(r["ticket_decision"])
+    sig = {s for s, d in dec.items() if any(x not in ("NO_SIGNAL",) for x in d)}
+    st = lambda k: sum(r.get("status") == k for r in t)
+    out += [f"- Markets observed and settled: {len({r['slug'] for r in graded})} "
+            f"({len(dec)} with decision logging, v16+)",
+            f"- Markets with a signal: {len(sig)}",
+            f"- Alerts attempted: {len(t)} · delivered: {sum(str(r.get('delivered')) == 'True' for r in t)} · "
+            f"delivery failed: {st('UNDELIVERED')}" + (" (pre-v16 tickets have no delivery proof)" if any(not r.get('delivered') for r in t) else ""),
+            f"- Simulated fills (quote available, size not verified): {st('FILLABLE')}",
+            f"- Expired alerts: {st('EXPIRED') + st('MISSED')} · unconfirmed price checks: {st('UNCONFIRMED')}"]
+    # missed opportunities: signals the filters blocked, with what they WOULD have done at the signal price
+    blocked = {}
+    for r in graded:
+        d = r.get("ticket_decision") or ""
+        if d.startswith("SKIP_") or d in ("EDGE_CAP", "BELOW_BAR"):
+            side, px = r.get("jj_side") or r.get("safe_side"), fnum(r.get("jj_price") or r.get("safe_price"))
+            pnl = bet_pnl(side, px, res[r["slug"]]["winner"], fnum(r.get("fee_rate")))
+            if pnl is not None:
+                b = blocked.setdefault(d, {})
+                b.setdefault(r["slug"], pnl)                # one per market
+    if blocked:
+        out.append("- Missed opportunities (blocked by a filter; P&L at the signal price is hypothetical):")
+        for d, m in sorted(blocked.items()):
+            v = list(m.values())
+            out.append(f"  - {d}: {len(v)} markets, would have won {sum(x > 0 for x in v)}, "
+                       f"{sum(v) * SHARES:+.2f} at {SHARES} shares. Negative = the filter saved money.")
+    sizes = [r for r in t if r.get("size_ok_30") not in (None, "")]
+    if sizes:
+        ok = sum(r["size_ok_30"] == "True" for r in sizes)
+        out.append(f"- Liquidity (units UNVERIFIED, not used): {ok}/{len(sizes)} simulated taps showed ask size >= $10 worth")
+    else:
+        out.append("- Liquidity: the venue's quote has not reported ask size yet; fills stay 'simulated'.")
+    return out
+
+
 def loop_lines():
     """Blocking network calls stall the 2s loop; stalls make price checks and timings late."""
     rows = read_csv(os.path.join("data", "loop_stats.csv"))
@@ -438,7 +514,11 @@ def team_lines():
             w = sum(r["result"] == "WIN" for r in g)
             pnl = sum(float(r.get("pnl10") or 0) for r in g)
             out.append(f"- Gemini said {v}: {len(g)} tickets, won {w} ({w / len(g):.0%}), $10 each = {pnl:+.2f}")
-    out.append("- If PASS tickets lose money and AGREE tickets make money, Gemini is adding value.")
+    allp = sum(float(r.get("pnl10") or 0) for r in rows)
+    agree = sum(float(r.get("pnl10") or 0) for r in rows if r["ai_verdict"] == "AGREE")
+    out.append(f"- Taking every ticket: {allp:+.2f}. Taking only Gemini's AGREE tickets: {agree:+.2f}. "
+               f"Difference: {agree - allp:+.2f} over {len(rows)} tickets.")
+    out.append("- Gemini adds value only if this difference stays positive over 100+ tickets. Not assumed.")
     return out
 
 
