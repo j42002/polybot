@@ -217,7 +217,7 @@ def build_report(rows, results):
     best, n = fit_sigma(graded, res)
     tune = ([f"- Model volatility fitted on {n} settled checks: x{best[0]} (Brier {best[1]:.4f})"] if best
             else [f"- Model volatility: default x1.4 until {TUNE_MIN} settled checks ({n} so far)"])
-    lines += calibration_lines(graded, res) + ["", "## Model tuning", ""] + tune + latency_lines()
+    lines += calibration_lines(graded, res) + ["", "## Model tuning", ""] + tune + latency_lines() + team_lines()
     lines += ["", f"_{VERSION}_"]
     return "\n".join(lines)
 
@@ -310,6 +310,23 @@ def latency_lines():
             out.append(f"- Price change {k}s after ticket: median {med(v) * 100:+.1f} points")
     if done:
         out.append(f"- Still buyable 30s later: {fill}/{len(done)} ({fill / len(done):.0%}) \u00b7 expired: {exp}")
+    return out
+
+
+def team_lines():
+    """Is ChatGPT's second opinion worth listening to? Compare tickets it agreed with vs passed on."""
+    rows = [r for r in read_csv(os.path.join("data", "tickets.csv"))
+            if r.get("gpt_verdict") in ("AGREE", "PASS") and r.get("result") in ("WIN", "LOSS")]
+    out = ["", "## ChatGPT second opinion", ""]
+    if not rows:
+        return out + ["No graded tickets with a ChatGPT opinion yet."]
+    for v in ("AGREE", "PASS"):
+        g = [r for r in rows if r["gpt_verdict"] == v]
+        if g:
+            w = sum(r["result"] == "WIN" for r in g)
+            pnl = sum(float(r.get("pnl10") or 0) for r in g)
+            out.append(f"- ChatGPT said {v}: {len(g)} tickets, won {w} ({w / len(g):.0%}), $10 each = {pnl:+.2f}")
+    out.append("- If PASS tickets lose money and AGREE tickets make money, ChatGPT is adding value.")
     return out
 
 

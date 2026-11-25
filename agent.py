@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v11"
+VERSION = "polybot agent v12"
 
 import csv
 import json
@@ -24,6 +24,11 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 import requests
+
+try:
+    import team                      # ChatGPT + Claude team board (off unless OPENAI_API_KEY is set)
+except Exception:
+    team = None
 
 WINDOW = 300                      # 5-minute markets
 CHECKPOINTS = (240, 210, 180, 120, 60)  # seconds left when the agent decides
@@ -40,7 +45,7 @@ TICKETS = os.path.join("data", "tickets.csv")
 TICKET_FIELDS = ["t_start", "slug", "tier", "side", "price", "ev", "sent_utc", "result", "pnl10", "settled_utc",
                  "max_price", "secs_left", "t_spot", "t_quote", "t_decide", "t_sent", "discord_ms", "msg_id",
                  "fresh_ask", "ask_5", "ask_10", "ask_20", "ask_30", "ask_45", "ask_60",
-                 "expired_s", "fill_price", "status"]
+                 "expired_s", "fill_price", "status", "gpt_verdict", "gpt_why"]
 # v10 latency rules (Jacob's 6:40 recording: SAFE DOWN at 71c, 91%, sent with 2:00 left;
 # by the time the app loaded DOWN was 94-96c with 1:14 left, then BTC reversed and Up won).
 TICKET_TIERS = ("JJ",)             # SAFE tickets paused: late-window favorites move faster than a human
@@ -700,6 +705,8 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
                 log_ticket(best, {"max_price": max_price, "secs_left": secs_left, "t_spot": round(t_spot, 2),
                                   "t_quote": round(t_quote, 2), "t_decide": round(t_decide, 2),
                                   "t_sent": round(t_sent, 2), "discord_ms": ms, "msg_id": mid, "fresh_ask": fresh})
+                if team:
+                    team.second_opinion(t0, best, secs_left, recent)      # background: never delays the ticket
                 WATCHERS.append({"t_start": t0, "slug": best["slug"], "mkt": us["mkt"], "side": side,
                                  "max_price": max_price, "msg_id": mid, "t_sent": t_sent,
                                  "asks": {}, "expired_s": None})
@@ -727,6 +734,8 @@ def main():
     except Exception as e:
         account_watch = None
         print(f"account watcher unavailable: {e.__class__.__name__}")
+    if team and team.enabled():
+        print(f"team: ChatGPT second opinions on ({team.OPENAI_MODEL})")
     acct_post = lambda payload: session.post(WEBHOOK, json=payload, timeout=6) if WEBHOOK else None
     while time.time() < stop_at:
         tick = time.time()
@@ -736,6 +745,14 @@ def main():
                 check_results(session)
             except Exception as e:
                 print(f"  results error: {e!r}")
+        if team:
+            for op in team.drain():                               # ChatGPT answered: save + post under the ticket
+                update_ticket(op["t_start"], op)
+                if WEBHOOK:
+                    try:
+                        session.post(WEBHOOK, json={"content": team.opinion_text(op)}, timeout=6)
+                    except Exception:
+                        pass
         if WATCHERS:
             try:
                 run_watchers(session, time.time())

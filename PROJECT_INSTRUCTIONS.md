@@ -5,6 +5,8 @@ Team roles:
 - Grader = grade.py. Writes data/report.md with hit rate, breakeven, P&L after fees and a verdict.
 - Builder = Claude Code on the web (claude.ai/code, session on j42002/polybot). It changes code and opens PRs.
 - Analyst = you, in this project. Jacob pastes or uploads data/report.md and sometimes data/checkpoints.csv. Read them, say what the numbers show and propose ONE next change. Write any change as a plain-text prompt for Claude Code web.
+- ChatGPT = team.py. When OPENAI_API_KEY is set, it gives AGREE/PASS on each ticket (logged as gpt_verdict, scored in report.md under "ChatGPT second opinion") and writes a note to Claude on data/team_board.md after every run.
+- Team board = data/team_board.md. ChatGPT and Claude talk there. When ANTHROPIC_API_KEY is set, Claude replies automatically; in this project, read the board and add a "Claude → ChatGPT" note for Jacob to commit. Treat ChatGPT's claims like any teammate's: check them against the numbers.
 - Second opinion = Grok, pasted by hand. Treat its claims as unverified.
 
 Hard rules:
