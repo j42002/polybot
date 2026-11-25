@@ -82,13 +82,13 @@ def money_line(price, fee_rate, stake=10.0):
     return shares, shares * (1 - price) - fee, stake + fee
 
 
-def plain_english(price, fair, side="Up", secs_left=240):
-    """In the app's own words: the button shows a %, the timer counts down, 'Target' is the line."""
+def plain_english(price, fair, side="Up", secs_left=240, max_price=None):
+    """In the app's own words. Tells you the highest % that is still a good buy."""
     pay = round(price * 100)
+    top = round((max_price or price) * 100)
     in10 = max(1, min(9, round(fair * 10)))
-    dl = max(secs_left - 30, 0)
     btn = "Up" if side == "Up" else "Down"
-    return (f"DO THIS: tap {btn} only if it shows {pay}% or less and the timer is above {dl // 60:02d}:{dl % 60:02d}.",
+    return (f"DO THIS: tap {btn} now. Still a good buy up to {top}%.",
             f"{btn} wins if BTC ends {'above' if side == 'Up' else 'below'} the Target. We think it wins about {in10} in 10.")
 
 
@@ -123,7 +123,7 @@ def render(t):
     d.rounded_rectangle(s(80, 254, 80 + pw, 298), radius=22 * K, fill=INK)
     d.text(s(80 + pw / 2, 276), pill, font=f(24), fill=acc, anchor="mm")
     left_s = t["secs_left"]
-    d.text(s(100 + pw, 276), f"Tap {'Up' if up else 'Down'} at {t['price'] * 100:.0f}% or less",
+    d.text(s(100 + pw, 276), f"Tap {'Up' if up else 'Down'} now \u00b7 good up to {round((t.get('max_price') or t['price']) * 100)}%",
            font=f(30), fill=INK, anchor="lm")
     cx, cy, rad = W - 148, 225, 76
     d.ellipse(s(cx - rad - 8, cy - rad - 8, cx + rad + 8, cy + rad + 8), fill=INK)
@@ -196,7 +196,7 @@ def render(t):
         d.text(s(W / 2, (gy0 + gy1) / 2), "chart warming up", font=f(24, False), fill=MUTED, anchor="mm")
 
     # ---- plain English
-    l1, l2 = plain_english(t["price"], t["fair"], t["side"], t["secs_left"])
+    l1, l2 = plain_english(t["price"], t["fair"], t["side"], t["secs_left"], t.get("max_price"))
     panel(img, (40, 792, W - 40, 884), 24, (30, 27, 18), outline=(92, 70, 30))
     d.text(s(64, 822), l1, font=f(23), fill=GOLD, anchor="lm")
     d.text(s(64, 858), l2, font=f(22, False), fill=TEXT, anchor="lm")

@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v7"
+VERSION = "polybot agent v8"
 
 import csv
 import json
@@ -34,6 +34,10 @@ SAFE_CHECKPOINTS = (180, 120)      # SAFE: mid-window, never the last minute
 SAFE_PROB = 0.75                   # ...only when our model gives the side 75%+
 SAFE_PRICE = (0.55, 0.85)          # ...never pays more than 85c (one loss must not erase many wins)
 SAFE_EDGE = 0.04                   # ...and still needs 4c+ edge after the fee
+TICKET_EDGE = 0.06                 # a ticket only goes out with 6%+ edge (paper bets still log at 4%)
+TICKET_BUFFER = 0.02               # card says "still good up to" the price that leaves 2% edge
+TICKETS = os.path.join("data", "tickets.csv")
+TICKET_FIELDS = ["t_start", "slug", "tier", "side", "price", "ev", "sent_utc", "result", "pnl10", "settled_utc"]
 WEBHOOK = os.getenv("DISCORD_WEBHOOK", "")
 STATS = os.path.join("data", "jj_stats.json")
 ET = ZoneInfo("America/New_York")
@@ -352,6 +356,7 @@ def card_png(row, prices, stats):
         "dist": row["dist"], "ptb": row["ptb_proxy"], "spot": row["spot"],
         "prices": prices, "fee_rate": row.get("fee_rate") or FEE_RATE,
         "record": record_text(stats, row.get("tier", "JJ")), "tier": row.get("tier", "JJ"),
+        "max_price": round(min(row["jj_price"] + row["jj_ev"] - TICKET_BUFFER, 0.97), 2),
     })
 
 
@@ -374,6 +379,101 @@ def post_ticket(session, row, prices=None):
         print(f"  ticket sent to Discord ({r.status_code})")
     except Exception as e:
         print(f"  ticket failed: {e!r}")
+
+
+def log_ticket(row):
+    os.makedirs("data", exist_ok=True)
+    new = not os.path.exists(TICKETS)
+    with open(TICKETS, "a", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=TICKET_FIELDS)
+        if new:
+            w.writeheader()
+        w.writerow({"t_start": row["t_start"], "slug": row["slug"], "tier": row["tier"],
+                    "side": row["jj_side"], "price": row["jj_price"], "ev": row["jj_ev"],
+                    "sent_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
+
+
+def pnl_10(price, won, fee_rate=None):
+    """Result of a $10 bet at this price, after the fee."""
+    fr = FEE_RATE if fee_rate is None else fee_rate
+    shares = 10 / price
+    fee = fr * price * (1 - price) * shares
+    return round(shares * (1 - price) - fee, 2) if won else round(-(10 + fee), 2)
+
+
+def get_us_winner(session, slug):
+    """'Up' / 'Down' once the US round has settled, else None."""
+    r = session.get(f"{US_GATEWAY}/events/slug/{slug}", headers=HEADERS, timeout=8)
+    r.raise_for_status()
+    m = r.json()["event"]["markets"][0]
+    if not m.get("closed"):
+        return None
+    b = session.get(f"{US_GATEWAY}/markets/{m['slug']}/bbo", headers=HEADERS, timeout=8).json()["marketData"]
+    px = (b.get("settlementPx") or {}).get("value")
+    if px is None:
+        return None
+    return "Up" if float(px) == 1.0 else ("Down" if float(px) == 0.0 else None)
+
+
+def today_tally(rows):
+    today = datetime.now(ET).date()
+    done = [r for r in rows if r.get("result") and
+            datetime.fromtimestamp(int(r["t_start"]), ET).date() == today]
+    wins = sum(r["result"] == "WIN" for r in done)
+    return wins, len(done) - wins, round(sum(float(r["pnl10"] or 0) for r in done), 2)
+
+
+def check_results(session):
+    """Post WIN/LOSS for every ticket whose round has settled (also ones left by an earlier run)."""
+    if not os.path.exists(TICKETS):
+        return
+    with open(TICKETS, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    changed = False
+    for r in rows:
+        if r.get("result") or time.time() < int(r["t_start"]) + WINDOW + 45:
+            continue
+        try:
+            winner = get_us_winner(session, r["slug"]) if VENUE == "us" else None
+        except Exception as e:
+            print(f"  result check failed {r['slug']}: {e!r}")
+            continue
+        if not winner:
+            continue
+        won = winner == r["side"]
+        r["result"] = "WIN" if won else "LOSS"
+        r["pnl10"] = pnl_10(float(r["price"]), won)
+        r["settled_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        changed = True
+        post_result(session, r, today_tally(rows))
+    if changed:
+        with open(TICKETS, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=TICKET_FIELDS)
+            w.writeheader()
+            w.writerows(rows)
+
+
+def post_result(session, r, tally):
+    won = r["result"] == "WIN"
+    t0 = datetime.fromtimestamp(int(r["t_start"]), ET)
+    t1 = datetime.fromtimestamp(int(r["t_start"]) + WINDOW, ET)
+    when = f"{t0.strftime('%I:%M').lstrip('0')}\u2013{t1.strftime('%I:%M %p').lstrip('0')}"
+    w, l, total = tally
+    msg = {"username": "polybot", "embeds": [{
+        "title": f"{'\u2705 WON' if won else '\u274c LOST'} \u00b7 {r['tier']} \u00b7 {r['side'].upper()} \u00b7 {when} ET",
+        "description": (f"$10 at {float(r['price']) * 100:.0f}% \u2192 **{'+' if won else '-'}${abs(float(r['pnl10'])):.2f}**\n"
+                        f"Today: **{w} won \u00b7 {l} lost \u00b7 {'+' if total >= 0 else '-'}${abs(total):.2f}** (paper, $10 per ticket)"),
+        "color": 0x22C55E if won else 0xEF4444,
+        "url": market_url(r["slug"]),
+    }]}
+    if not WEBHOOK:
+        print(f"  result {r['slug']} {r['result']} (no webhook)")
+        return
+    try:
+        resp = session.post(WEBHOOK, json=msg, timeout=6)
+        print(f"  result posted {r['slug']} {r['result']} ({resp.status_code})")
+    except Exception as e:
+        print(f"  result post failed: {e!r}")
 
 
 def fmt(x, nd=4):
@@ -436,11 +536,22 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
     recent = [(ts, p) for ts, p in buf if ts >= now - 180]
     if row["jj_side"]:
         jj_done.add(t0)
-        post_ticket(session, dict(row, tier="JJ"), recent)
     if row["safe_side"]:
         jj_done.add(("safe", t0))
-        post_ticket(session, dict(row, tier="SAFE", jj_side=row["safe_side"],
-                                  jj_price=row["safe_price"], jj_ev=row["safe_ev"]), recent)
+    # ONE ticket per round, only the strongest, and only with a TICKET_EDGE cushion
+    cands = []
+    if row["jj_side"] and row["jj_ev"] >= TICKET_EDGE:
+        cands.append(dict(row, tier="JJ"))
+    if row["safe_side"] and row["safe_ev"] >= TICKET_EDGE:
+        cands.append(dict(row, tier="SAFE", jj_side=row["safe_side"],
+                          jj_price=row["safe_price"], jj_ev=row["safe_ev"]))
+    if cands and ("ticket", t0) not in jj_done:
+        best = max(cands, key=lambda r: r["jj_ev"])
+        jj_done.add(("ticket", t0))
+        post_ticket(session, best, recent)
+        log_ticket(best)
+    elif row["jj_side"] or row["safe_side"]:
+        print("  signal below ticket bar or round already ticketed - logged, not sent")
     print(f"  {row['slug']} {secs_left}s left | dist {row['dist']:+} | model Up {p_up:.0%} "
           f"| market Up ask {q.get('up_ask')} | mom={picks['mom'][0]} lean={picks['lean'][0]} edge={picks['edge'][0]} jj={picks['jj'][0]} safe={picks['safe'][0]}")
     return row
@@ -456,8 +567,15 @@ def main():
     first_window = window_start(time.time())
     stop_at = time.time() + RUN_MINUTES * 60
     rows = 0
+    last_check = 0.0
     while time.time() < stop_at:
         tick = time.time()
+        if tick - last_check > 20:
+            last_check = tick
+            try:
+                check_results(session)
+            except Exception as e:
+                print(f"  results error: {e!r}")
         p = get_spot(session)
         now = time.time()
         if p:
