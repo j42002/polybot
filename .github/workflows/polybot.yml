@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 env:
   PYTHONUNBUFFERED: "1"
@@ -46,3 +47,8 @@ jobs:
           git commit -m "polybot data $(date -u +%Y-%m-%dT%H:%MZ)"
           for i in 1 2 3; do git pull --rebase && git push && exit 0; sleep 5; done
           exit 1
+      - name: queue the next run (keeps it going even if the cron schedule is slow)
+        if: ${{ always() && (github.event_name == 'schedule' || github.event.inputs.minutes == '55') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run polybot.yml --repo ${{ github.repository }} --ref main -f minutes=55
