@@ -15,6 +15,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -33,11 +35,18 @@ jobs:
           print("keys present:", aw.enabled())
           aw.check(s, post)
           PY
-      - name: commit seen-list (fingerprints only)
+      - name: commit data (merge-safe)
         run: |
           git config user.name "polybot"
           git config user.email "polybot@users.noreply.github.com"
-          git add -A data/
-          git diff --cached --quiet && exit 0
-          git commit -m "account check: seen-list"
-          for i in 1 2 3; do git pull --rebase && git push && exit 0; sleep 5; done
+          rm -rf /tmp/ours && cp -r data /tmp/ours
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            python sync_data.py /tmp/ours data
+            git add -A data/
+            git diff --cached --quiet && exit 0
+            git commit -q -m "polybot data $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push -q origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
