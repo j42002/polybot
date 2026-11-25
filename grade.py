@@ -14,7 +14,7 @@ Verdict rules are fixed in advance so the goalposts can't move:
   95% CI entirely below 0  -> LOSES
   otherwise                -> NO EDGE
 """
-VERSION = "polybot grader v4"
+VERSION = "polybot grader v5"
 
 import csv
 import json
@@ -41,7 +41,8 @@ RES_FIELDS = ["slug", "t_start", "winner", "ptb_true", "final_true", "graded_utc
 STRATS = [("mom", "Momentum (bet the last-60s direction)"),
           ("lean", "Lean (bet the side BTC is on now)"),
           ("edge", "Edge (model beats the ask by 3c+)"),
-          ("jj", "JJ (60-90s in, 35-70c ask, model +4c)")]
+          ("jj", "JJ (60-90s in, 35-70c ask, model +4c)"),
+          ("safe", "SAFE (model 75%+, 55-85c ask, +4c, 3:00/2:00 left)")]
 
 
 def fnum(x):
@@ -217,13 +218,13 @@ def build_report(rows, results):
     return "\n".join(lines)
 
 
-def jj_stats(rows, results):
+def jj_stats(rows, results, key="jj"):
     res = {r["slug"]: r for r in results}
     pnls, prices, wins = [], [], 0
     for r in rows:
         if r["slug"] not in res or r.get("quote_src") not in GOOD_QUOTES:
             continue
-        side, price = r.get("jj_side"), fnum(r.get("jj_price"))
+        side, price = r.get(f"{key}_side"), fnum(r.get(f"{key}_price"))
         pnl = bet_pnl(side, price, res[r["slug"]]["winner"], fnum(r.get("fee_rate")))
         if pnl is not None:
             pnls.append(pnl); prices.append(price); wins += side == res[r["slug"]]["winner"]
@@ -254,6 +255,8 @@ def main():
     print(f"{VERSION} | {len(new)} newly settled windows | {len(results)} total")
     with open(STATS, "w", encoding="utf-8") as f:
         json.dump(jj_stats(rows, results), f)
+    with open(os.path.join("data", "safe_stats.json"), "w", encoding="utf-8") as f:
+        json.dump(jj_stats(rows, results, "safe"), f)
     report = build_report(rows, results)
     with open(REPORT, "w", encoding="utf-8") as f:
         f.write(report + "\n")

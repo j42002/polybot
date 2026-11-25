@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v6"
+VERSION = "polybot agent v7"
 
 import csv
 import json
@@ -30,6 +30,10 @@ CHECKPOINTS = (240, 210, 180, 120, 60)  # seconds left when the agent decides
 JJ_CHECKPOINTS = (240, 210)        # JJ strategy only enters 60-90s into the window
 JJ_PRICE = (0.35, 0.70)            # ...and only at the prices the top directional traders pay
 JJ_EDGE = 0.04                     # ...and only with 4c+ expected value after the fee
+SAFE_CHECKPOINTS = (180, 120)      # SAFE: mid-window, never the last minute
+SAFE_PROB = 0.75                   # ...only when our model gives the side 75%+
+SAFE_PRICE = (0.55, 0.85)          # ...never pays more than 85c (one loss must not erase many wins)
+SAFE_EDGE = 0.04                   # ...and still needs 4c+ edge after the fee
 WEBHOOK = os.getenv("DISCORD_WEBHOOK", "")
 STATS = os.path.join("data", "jj_stats.json")
 ET = ZoneInfo("America/New_York")
@@ -52,7 +56,7 @@ FIELDS = [
     "logged_utc", "slug", "t_start", "secs_left", "spot", "spot_open", "ptb_proxy",
     "dist", "mom60", "sigma", "model_up", "up_ask", "up_bid", "down_ask", "down_bid",
     "quote_src", "mom_side", "mom_price", "lean_side", "lean_price",
-    "edge_side", "edge_price", "edge_ev", "jj_side", "jj_price", "jj_ev", "pair_sum", "venue", "fee_rate", "version",
+    "edge_side", "edge_price", "edge_ev", "jj_side", "jj_price", "jj_ev", "safe_side", "safe_price", "safe_ev", "pair_sum", "venue", "fee_rate", "version",
 ]
 
 
@@ -136,6 +140,22 @@ def pick_strategies(spot, ptb, mom60, p_up, q):
                 best = (side, ask, round(ev, 4))
     out["edge"] = best
     return out
+
+
+def pick_safe(p_up, q, secs_left):
+    """SAFE = high win-rate tier. Only the side our model makes a 75%+ favorite,
+    priced 55-85c, with 4c+ edge after the fee, at 3:00 or 2:00 left.
+    Wins most of the time by design; the 85c cap keeps a loss from wiping out
+    more than ~5 wins. Graded separately from JJ."""
+    if secs_left not in SAFE_CHECKPOINTS:
+        return (None, None, None)
+    for side, p in (("Up", p_up), ("Down", 1 - p_up)):
+        ask = q.get(f"{side.lower()}_ask")
+        if p >= SAFE_PROB and ask and SAFE_PRICE[0] <= ask <= SAFE_PRICE[1]:
+            ev = p - ask - fee_per_share(ask)
+            if ev >= SAFE_EDGE:
+                return (side, ask, round(ev, 4))
+    return (None, None, None)
 
 
 def pick_jj(p_up, q, secs_left):
@@ -262,9 +282,10 @@ def append_row(row, path=DATA):
         w.writerow({k: row.get(k) for k in FIELDS})
 
 
-def load_stats():
+def load_stats(kind="jj"):
+    path = STATS if kind == "jj" else os.path.join("data", f"{kind}_stats.json")
     try:
-        with open(STATS, encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {}
@@ -284,7 +305,7 @@ def ticket_payload(row, stats):
     return {
         "username": "polybot",
         "embeds": [{
-            "title": f"{'BUY UP' if side == 'Up' else 'BUY DOWN'} · BTC 5m · {left // 60}:{left % 60:02d} left",
+            "title": f"[{row.get('tier', 'JJ')}] {'BUY UP' if side == 'Up' else 'BUY DOWN'} · BTC 5m · {left // 60}:{left % 60:02d} left",
             "url": market_url(row["slug"]),
             "description": f"Window {label} ET · [**Open this contract**]({market_url(row['slug'])})",
             "color": 0x2ECC71 if side == "Up" else 0xE74C3C,
@@ -302,12 +323,12 @@ def ticket_payload(row, stats):
     }
 
 
-def record_text(stats):
+def record_text(stats, kind="JJ"):
     n, hit, be = stats.get("n", 0), stats.get("hit"), stats.get("breakeven")
     if n and hit is not None and be is not None:
-        return (f"JJ paper record: {n} bets \u00b7 hit {hit:.0%} vs {be:.0%} breakeven "
+        return (f"{kind} paper record: {n} bets \u00b7 hit {hit:.0%} vs {be:.0%} breakeven "
                 f"\u00b7 {stats.get('pnl', 0):+.2f}/share")
-    return "JJ paper record: no settled bets yet"
+    return f"{kind} paper record: no settled bets yet"
 
 
 def card_png(row, prices, stats):
@@ -327,7 +348,8 @@ def card_png(row, prices, stats):
         "window_label": f"{t0.strftime('%b %d').replace(' 0', ' ')} \u00b7 "
                         f"{t0.strftime('%I:%M').lstrip('0')}\u2013{t1.strftime('%I:%M %p').lstrip('0')} ET",
         "dist": row["dist"], "ptb": row["ptb_proxy"], "spot": row["spot"],
-        "prices": prices, "fee_rate": row.get("fee_rate") or FEE_RATE, "record": record_text(stats),
+        "prices": prices, "fee_rate": row.get("fee_rate") or FEE_RATE,
+        "record": record_text(stats, row.get("tier", "JJ")), "tier": row.get("tier", "JJ"),
     })
 
 
@@ -335,7 +357,7 @@ def post_ticket(session, row, prices=None):
     if not WEBHOOK:
         print("  (no DISCORD_WEBHOOK set - ticket not sent)")
         return
-    stats = load_stats()
+    stats = load_stats(row.get("tier", "JJ").lower())
     payload = ticket_payload(row, stats)
     try:
         png = card_png(row, prices or [], stats)
@@ -390,6 +412,7 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
     picks = pick_strategies(spot, ptb, mom60, p_up, q)
     jj_done = jj_done if jj_done is not None else set()
     picks["jj"] = pick_jj(p_up, q, secs_left) if t0 not in jj_done else (None, None, None)
+    picks["safe"] = pick_safe(p_up, q, secs_left) if ("safe", t0) not in jj_done else (None, None, None)
     row = {
         "logged_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "slug": us["slug"] if us else slug_for(t0), "t_start": t0, "secs_left": secs_left,
@@ -403,15 +426,21 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
         "lean_side": picks["lean"][0], "lean_price": picks["lean"][1],
         "edge_side": picks["edge"][0], "edge_price": picks["edge"][1], "edge_ev": picks["edge"][2],
         "jj_side": picks["jj"][0], "jj_price": picks["jj"][1], "jj_ev": picks["jj"][2],
+        "safe_side": picks["safe"][0], "safe_price": picks["safe"][1], "safe_ev": picks["safe"][2],
         "pair_sum": round(q["up_ask"] + q["down_ask"], 4) if q.get("up_ask") and q.get("down_ask") else None,
         "version": VERSION,
     }
     append_row(row)
+    recent = [(ts, p) for ts, p in buf if ts >= now - 180]
     if row["jj_side"]:
         jj_done.add(t0)
-        post_ticket(session, row, [(ts, p) for ts, p in buf if ts >= now - 180])
+        post_ticket(session, dict(row, tier="JJ"), recent)
+    if row["safe_side"]:
+        jj_done.add(("safe", t0))
+        post_ticket(session, dict(row, tier="SAFE", jj_side=row["safe_side"],
+                                  jj_price=row["safe_price"], jj_ev=row["safe_ev"]), recent)
     print(f"  {row['slug']} {secs_left}s left | dist {row['dist']:+} | model Up {p_up:.0%} "
-          f"| market Up ask {q.get('up_ask')} | mom={picks['mom'][0]} lean={picks['lean'][0]} edge={picks['edge'][0]} jj={picks['jj'][0]}")
+          f"| market Up ask {q.get('up_ask')} | mom={picks['mom'][0]} lean={picks['lean'][0]} edge={picks['edge'][0]} jj={picks['jj'][0]} safe={picks['safe'][0]}")
     return row
 
 
