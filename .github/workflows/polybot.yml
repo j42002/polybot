@@ -1,0 +1,44 @@
+name: polybot
+
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: "How many minutes to run (test = 10)"
+        default: "10"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: polybot
+  cancel-in-progress: false
+
+jobs:
+  scout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: scout (paper only, never trades)
+        run: python agent.py
+        env:
+          RUN_MINUTES: ${{ github.event.inputs.minutes || '55' }}
+      - name: grade
+        run: python grade.py
+        continue-on-error: true
+      - name: commit data
+        run: |
+          git config user.name "polybot"
+          git config user.email "polybot@users.noreply.github.com"
+          git add -A data/
+          git diff --cached --quiet && exit 0
+          git commit -m "polybot data $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do git pull --rebase && git push && exit 0; sleep 5; done
+          exit 1
