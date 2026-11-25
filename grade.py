@@ -28,7 +28,7 @@ import requests
 
 GAMMA = "https://gamma-api.polymarket.com/events"
 US_GATEWAY = "https://gateway.polymarket.us/v1"
-GOOD_QUOTES = ("clob", "us_bbo")   # rows priced from a live order book
+GOOD_QUOTES = ("clob", "us_bbo", "us_book")   # rows priced from a live order book
 HEADERS = {"User-Agent": "polybot-paper/1 (research, log-only)"}
 CHECKS = os.path.join("data", "checkpoints.csv")
 RESULTS = os.path.join("data", "results.csv")
@@ -187,7 +187,7 @@ def build_report(rows, results):
              f"{len({r['slug'] for r in graded})} windows settled", "",
              "PAPER ONLY. P&L is per $1 share after the taker fee; Total assumes "
              f"{SHARES} shares per bet. Breakeven = win rate needed after the fee (price + fee).", ""]
-    lines += research_lines(graded, res)
+    lines += research_lines(graded, res, rows)
     lines += ["---", "", "# Detail and history (ALL versions, mixed models; for context, not evidence)", ""]
     for cp in sorted({int(r["secs_left"]) for r in graded}, reverse=True):
         sub = [r for r in graded if int(r["secs_left"]) == cp]
@@ -553,7 +553,7 @@ def settlement_lines(res):
     return out
 
 
-def research_lines(graded, res):
+def research_lines(graded, res, all_rows=None):
     """The report ChatGPT asked for, experiment rounds only (v18+). Rounds observed are NOT trades."""
     eg = exp_only(graded)
     t = tickets_csv()
@@ -613,8 +613,12 @@ def research_lines(graded, res):
     stalls = sum(fnum(r.get("stalls_5s")) or 0 for r in ls)
     gaps = [fnum(r.get("max_spot_gap_s")) for r in ls if fnum(r.get("max_spot_gap_s")) is not None]
     unconf = sum(r.get("status_30") == "UNCONFIRMED" for r in t)
+    er = exp_only(all_rows or [])
+    noq = sum(r.get("quote_src") == "error" for r in er)
+    fb = sum(r.get("quote_src") == "us_book" for r in er)
     out.append(f"6. **Loop health and missing data:** {len(ls)} runs, stalls over 5s {stalls:.0f}/{ticks:.0f} loops"
                + (f", longest BTC price gap {max(gaps):.1f}s" if gaps else "")
+               + f" · checks with no market quote {noq}/{len(er)} (book fallback used {fb})"
                + f" · bad close samples {st['invalid_sampling']} · undelivered alerts "
                f"{sum(r.get('status') == 'UNDELIVERED' for r in t)} · unconfirmed price checks {unconf}")
     # 7 Gemini

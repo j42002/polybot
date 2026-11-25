@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v18"
+VERSION = "polybot agent v19"
 
 import csv
 import json
@@ -377,7 +377,11 @@ def _size(d, side):
 
 
 def get_us_quotes(session, mkt_slug):
-    """US top of book. longQuote = price to buy Up, shortQuote = price to buy Down."""
+    """US top of book. longQuote = price to buy Up, shortQuote = price to buy Down.
+    Found 2026-11-25 (v18 run log + browser check): /bbo answers 404 'market not found' for a
+    LIVE market about 30% of the time, which dropped whole rounds of quotes. /book for the same
+    market answered every time, with the same top of book plus share counts and a timestamp.
+    So: try /bbo, and on any failure read /book. quote_src says which one was used."""
     t_req = time.time()
     try:
         r = session.get(f"{US_GATEWAY}/markets/{mkt_slug}/bbo", headers=HEADERS, timeout=6)
@@ -391,11 +395,38 @@ def get_us_quotes(session, mkt_slug):
         return {"quote_src": "us_bbo", "up_ask": ok(ua), "down_ask": ok(da),
                 "up_bid": ok(ub), "down_bid": ok(round(1 - ba, 4)) if ba else None,
                 "t_req": t_req, "t_recv": t_recv, "book_ts": _book_ts(d),
-                "up_ask_size": _size(d, "long"), "down_ask_size": _size(d, "short")}
+                "up_ask_size": _num(d.get("askShares")), "down_ask_size": _num(d.get("bidShares"))}
     except Exception as e:
-        print(f"  us bbo failed ({e.__class__.__name__}) - no quotes this checkpoint")
+        bbo_err = getattr(getattr(e, "response", None), "status_code", None) or e.__class__.__name__
+    try:
+        q = get_us_book(session, mkt_slug, t_req)
+        q["bbo_err"] = bbo_err
+        return q
+    except Exception as e:
+        code = getattr(getattr(e, "response", None), "status_code", None) or e.__class__.__name__
+        print(f"  us quotes failed (bbo {bbo_err}, book {code}) - no quotes this checkpoint")
         return {"quote_src": "error", "up_ask": None, "up_bid": None, "down_ask": None, "down_bid": None,
                 "t_req": t_req, "t_recv": None}
+
+
+def get_us_book(session, mkt_slug, t_req=None):
+    """Full US order book for the Up (long) side. Up ask = lowest offer. Down ask = 1 - highest bid
+    (buying Down = selling Up). Sizes are share counts at that best price."""
+    t_req = t_req or time.time()
+    r = session.get(f"{US_GATEWAY}/markets/{mkt_slug}/book", headers=HEADERS, timeout=6)
+    t_recv = time.time()
+    r.raise_for_status()
+    d = r.json()["marketData"]
+    lvl = lambda x: (_num(x.get("px")), _num(x.get("qty")))
+    offers = sorted((lvl(x) for x in d.get("offers") or [] if _num(x.get("px")) is not None), key=lambda t: t[0])
+    bids = sorted((lvl(x) for x in d.get("bids") or [] if _num(x.get("px")) is not None), key=lambda t: -t[0])
+    ok = lambda p: p if p is not None and 0 < p < 1 else None
+    ua, us = (offers[0] if offers else (None, None))
+    ub, bs = (bids[0] if bids else (None, None))
+    return {"quote_src": "us_book", "up_ask": ok(ua), "up_bid": ok(ub),
+            "down_ask": ok(round(1 - ub, 4)) if ub else None, "down_bid": ok(round(1 - ua, 4)) if ua else None,
+            "t_req": t_req, "t_recv": t_recv, "book_ts": _iso_ts(d.get("transactTime")),
+            "up_ask_size": us, "down_ask_size": bs}
 
 
 def book_top(session, token):
