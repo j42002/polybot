@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v5"
+VERSION = "polybot agent v6"
 
 import csv
 import json
@@ -52,7 +52,7 @@ FIELDS = [
     "logged_utc", "slug", "t_start", "secs_left", "spot", "spot_open", "ptb_proxy",
     "dist", "mom60", "sigma", "model_up", "up_ask", "up_bid", "down_ask", "down_bid",
     "quote_src", "mom_side", "mom_price", "lean_side", "lean_price",
-    "edge_side", "edge_price", "edge_ev", "jj_side", "jj_price", "jj_ev", "venue", "fee_rate", "version",
+    "edge_side", "edge_price", "edge_ev", "jj_side", "jj_price", "jj_ev", "pair_sum", "venue", "fee_rate", "version",
 ]
 
 
@@ -302,12 +302,51 @@ def ticket_payload(row, stats):
     }
 
 
-def post_ticket(session, row):
+def record_text(stats):
+    n, hit, be = stats.get("n", 0), stats.get("hit"), stats.get("breakeven")
+    if n and hit is not None and be is not None:
+        return (f"JJ paper record: {n} bets \u00b7 hit {hit:.0%} vs {be:.0%} breakeven "
+                f"\u00b7 {stats.get('pnl', 0):+.2f}/share")
+    return "JJ paper record: no settled bets yet"
+
+
+def card_png(row, prices, stats):
+    """Visual ticket (ticket_card.py). Returns PNG bytes, or None if Pillow is missing."""
+    try:
+        import ticket_card
+    except Exception as e:
+        print(f"  card renderer unavailable: {e!r}")
+        return None
+    side = row["jj_side"]
+    t0 = datetime.fromtimestamp(row["t_start"], ET)
+    t1 = datetime.fromtimestamp(row["t_start"] + WINDOW, ET)
+    return ticket_card.render({
+        "side": side, "price": row["jj_price"], "ev": row["jj_ev"],
+        "fair": row["model_up"] if side == "Up" else round(1 - row["model_up"], 4),
+        "secs_left": row["secs_left"],
+        "window_label": f"{t0.strftime('%b %d').replace(' 0', ' ')} \u00b7 "
+                        f"{t0.strftime('%I:%M').lstrip('0')}\u2013{t1.strftime('%I:%M %p').lstrip('0')} ET",
+        "dist": row["dist"], "ptb": row["ptb_proxy"], "spot": row["spot"],
+        "prices": prices, "fee_rate": row.get("fee_rate") or FEE_RATE, "record": record_text(stats),
+    })
+
+
+def post_ticket(session, row, prices=None):
     if not WEBHOOK:
         print("  (no DISCORD_WEBHOOK set - ticket not sent)")
         return
+    stats = load_stats()
+    payload = ticket_payload(row, stats)
     try:
-        r = session.post(WEBHOOK, json=ticket_payload(row, load_stats()), timeout=6)
+        png = card_png(row, prices or [], stats)
+        if png:
+            e = payload["embeds"][0]
+            e["image"] = {"url": "attachment://ticket.png"}
+            e.pop("fields", None)            # the card shows the numbers
+            r = session.post(WEBHOOK, data={"payload_json": json.dumps(payload)},
+                             files={"files[0]": ("ticket.png", png, "image/png")}, timeout=10)
+        else:
+            r = session.post(WEBHOOK, json=payload, timeout=6)
         print(f"  ticket sent to Discord ({r.status_code})")
     except Exception as e:
         print(f"  ticket failed: {e!r}")
@@ -364,12 +403,13 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
         "lean_side": picks["lean"][0], "lean_price": picks["lean"][1],
         "edge_side": picks["edge"][0], "edge_price": picks["edge"][1], "edge_ev": picks["edge"][2],
         "jj_side": picks["jj"][0], "jj_price": picks["jj"][1], "jj_ev": picks["jj"][2],
+        "pair_sum": round(q["up_ask"] + q["down_ask"], 4) if q.get("up_ask") and q.get("down_ask") else None,
         "version": VERSION,
     }
     append_row(row)
     if row["jj_side"]:
         jj_done.add(t0)
-        post_ticket(session, row)
+        post_ticket(session, row, [(ts, p) for ts, p in buf if ts >= now - 180])
     print(f"  {row['slug']} {secs_left}s left | dist {row['dist']:+} | model Up {p_up:.0%} "
           f"| market Up ask {q.get('up_ask')} | mom={picks['mom'][0]} lean={picks['lean'][0]} edge={picks['edge'][0]} jj={picks['jj'][0]}")
     return row
@@ -421,11 +461,20 @@ def test_ticket():
            "secs_left": 240, "t_start": window_start(time.time()),
            "slug": us_slug_for(window_start(time.time())) if VENUE == "us" else slug_for(window_start(time.time())),
            "dist": 18.0, "mom60": 7.0}
+    row.update(ptb_proxy=58928.09, spot=58946.09, fee_rate=FEE_RATE)
+    prices = [(i * 2, 58928.09 + 18 * i / 89 + 6 * math.sin(i / 7)) for i in range(90)]
     p = ticket_payload(row, load_stats())
     p["content"] = "TEST TICKET - delivery check only, not a signal."
     if not WEBHOOK:
         sys.exit("DISCORD_WEBHOOK secret is missing")
-    r = requests.post(WEBHOOK, json=p, timeout=8)
+    png = card_png(row, prices, load_stats())
+    if png:
+        p["embeds"][0]["image"] = {"url": "attachment://ticket.png"}
+        p["embeds"][0].pop("fields", None)
+        r = requests.post(WEBHOOK, data={"payload_json": json.dumps(p)},
+                          files={"files[0]": ("ticket.png", png, "image/png")}, timeout=10)
+    else:
+        r = requests.post(WEBHOOK, json=p, timeout=8)
     print(f"test ticket -> Discord HTTP {r.status_code} (204 = delivered)")
     if r.status_code >= 300:
         sys.exit(r.text[:300])
