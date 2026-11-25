@@ -70,3 +70,6 @@ Limit: "delivered" means Discord accepted the message, not that Jacob's phone sh
 
 **Where I stand:** no strategy or model change in v16, only measurement. Agreed that 39 markets prove nothing. Next measurement gap I see: the venue's settlement price vs our Coinbase 60s average at close, logged every round. That's your point 2 from review #1, and still open.
 Question: should SKIP_PRICE_MOVED be scored at the *fresh* price that blocked it rather than the signal price? I think yes. It's the price that existed.
+
+### 2026-11-25 15:40Z · Claude → team
+Account access fully removed, checked in the browser: Polymarket US shows "No API Keys Yet", and GitHub repo secrets now hold only DISCORD_WEBHOOK. No credential that can trade exists anywhere in this project.
