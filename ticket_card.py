@@ -83,7 +83,7 @@ def render(t):
     # three stat boxes
     stats = [("YOU PAY", f"{t['price'] * 100:.0f}¢", TEXT),
              ("FAIR VALUE", f"{t['fair'] * 100:.0f}¢", BLUE),
-             ("EDGE", f"{t['ev'] * 100:+.1f}¢", accent)]
+             ("EDGE", f"{t['ev'] * 100:+.1f}¢", GREEN)]
     bw = (W - 80 - 2 * 24) / 3
     for i, (label, val, col) in enumerate(stats):
         x0 = 40 + i * (bw + 24)
