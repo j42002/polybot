@@ -3,6 +3,9 @@ name: polybot
 on:
   schedule:
     - cron: "*/20 * * * *"
+  push:
+    branches: [main]
+    paths: [".github/workflows/polybot.yml", "agent.py"]
   workflow_dispatch:
     inputs:
       minutes:
@@ -48,7 +51,7 @@ jobs:
           for i in 1 2 3; do git pull --rebase && git push && exit 0; sleep 5; done
           exit 1
       - name: queue the next run (keeps it going even if the cron schedule is slow)
-        if: ${{ always() && (github.event_name == 'schedule' || github.event.inputs.minutes == '55') }}
+        if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.minutes == '55') }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run polybot.yml --repo ${{ github.repository }} --ref main -f minutes=55
