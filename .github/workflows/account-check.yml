@@ -1,0 +1,43 @@
+name: account check
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/account-check.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: read-only account check (posts to Discord, logs nothing private)
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          POLYMARKET_KEY_ID: ${{ secrets.POLYMARKET_KEY_ID }}
+          POLYMARKET_SECRET_KEY: ${{ secrets.POLYMARKET_SECRET_KEY }}
+        run: |
+          python - <<'PY'
+          import os, requests, account_watch as aw
+          s = requests.Session()
+          hook = os.environ.get("DISCORD_WEBHOOK", "")
+          post = lambda p: s.post(hook, json=p, timeout=6) if hook else None
+          print("keys present:", aw.enabled())
+          aw.check(s, post)
+          PY
+      - name: commit seen-list (fingerprints only)
+        run: |
+          git config user.name "polybot"
+          git config user.email "polybot@users.noreply.github.com"
+          git add -A data/
+          git diff --cached --quiet && exit 0
+          git commit -m "account check: seen-list"
+          for i in 1 2 3; do git pull --rebase && git push && exit 0; sleep 5; done
