@@ -82,14 +82,15 @@ def money_line(price, fee_rate, stake=10.0):
     return shares, shares * (1 - price) - fee, stake + fee
 
 
-def plain_english(price, fair):
-    """The whole bet in one sentence a first-timer can read."""
+def plain_english(price, fair, side="Up", secs_left=240):
+    """Line 1 = exactly what to do and by when. Line 2 = the bet in plain words."""
     pay = round(price * 100)
     gain = 100 - pay
     in10 = max(1, min(9, round(fair * 10)))
-    return (f"You pay {pay}¢. If right, you get $1 back (+{gain}¢). "
-            f"If wrong, you lose the {pay}¢.",
-            f"We think this wins about {in10} times out of 10.")
+    dl = max(secs_left - 30, 0)
+    btn = "UP" if side == "Up" else "DOWN"
+    return (f"DO THIS: open the app → tap {btn} → pay {pay}¢ or less → before {dl // 60}:{dl % 60:02d} left.",
+            f"Pay {pay}¢ to win $1 (+{gain}¢). If wrong you lose {pay}¢. Wins about {in10} in 10.")
 
 
 def render(t):
@@ -122,7 +123,9 @@ def render(t):
     pw = tw(d, pill, f(24)) + 36
     d.rounded_rectangle(s(80, 254, 80 + pw, 298), radius=22 * K, fill=INK)
     d.text(s(80 + pw / 2, 276), pill, font=f(24), fill=acc, anchor="mm")
-    d.text(s(100 + pw, 276), f"at {t['price'] * 100:.0f}¢ or better", font=f(30), fill=INK, anchor="lm")
+    left_s = t["secs_left"]
+    d.text(s(100 + pw, 276), f"Tap {'UP' if up else 'DOWN'} now · {left_s // 60}:{left_s % 60:02d} left",
+           font=f(30), fill=INK, anchor="lm")
     cx, cy, rad = W - 148, 225, 76
     d.ellipse(s(cx - rad - 8, cy - rad - 8, cx + rad + 8, cy + rad + 8), fill=INK)
     box = s(cx - rad, cy - rad, cx + rad, cy + rad)
@@ -134,7 +137,7 @@ def render(t):
     # ---- stats, in plain English: reads left to right as one sentence
     cents = lambda v: f"{v * 100:.0f}\u00a2" if v * 100 >= 1 else f"{v * 100:.1f}\u00a2"
     stats = [("IT COSTS", cents(t["price"]), TEXT, "per share, right now"),
-             ("IT'S REALLY WORTH", cents(t["fair"]), BLUE, "by our math"),
+             ("OUR WIN CHANCE", f"{t['fair'] * 100:.0f}%", BLUE, f"so it's worth ~{t['fair'] * 100:.0f}¢"),
              ("SO IT'S CHEAP BY", cents(t["ev"]), GREEN, "per share, after fees")]
     bw = (W - 80 - 2 * 20) / 3
     for i, (label, val, col, note) in enumerate(stats):
@@ -193,10 +196,10 @@ def render(t):
         d.text(s(W / 2, (gy0 + gy1) / 2), "chart warming up", font=f(24, False), fill=MUTED, anchor="mm")
 
     # ---- plain English
-    l1, l2 = plain_english(t["price"], t["fair"])
+    l1, l2 = plain_english(t["price"], t["fair"], t["side"], t["secs_left"])
     panel(img, (40, 792, W - 40, 884), 24, (30, 27, 18), outline=(92, 70, 30))
-    d.text(s(64, 822), l1, font=f(23), fill=TEXT, anchor="lm")
-    d.text(s(64, 858), l2, font=f(23), fill=GOLD, anchor="lm")
+    d.text(s(64, 822), l1, font=f(23), fill=GOLD, anchor="lm")
+    d.text(s(64, 858), l2, font=f(22, False), fill=TEXT, anchor="lm")
 
     # ---- money
     shares, win, lose = money_line(t["price"], t["fee_rate"])
