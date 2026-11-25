@@ -83,14 +83,13 @@ def money_line(price, fee_rate, stake=10.0):
 
 
 def plain_english(price, fair, side="Up", secs_left=240):
-    """Line 1 = exactly what to do and by when. Line 2 = the bet in plain words."""
+    """In the app's own words: the button shows a %, the timer counts down, 'Target' is the line."""
     pay = round(price * 100)
-    gain = 100 - pay
     in10 = max(1, min(9, round(fair * 10)))
     dl = max(secs_left - 30, 0)
-    btn = "UP" if side == "Up" else "DOWN"
-    return (f"DO THIS: open the app → tap {btn} → pay {pay}¢ or less → before {dl // 60}:{dl % 60:02d} left.",
-            f"Pay {pay}¢ to win $1 (+{gain}¢). If wrong you lose {pay}¢. Wins about {in10} in 10.")
+    btn = "Up" if side == "Up" else "Down"
+    return (f"DO THIS: tap {btn} only if it shows {pay}% or less and the timer is above {dl // 60:02d}:{dl % 60:02d}.",
+            f"{btn} wins if BTC ends {'above' if side == 'Up' else 'below'} the Target. We think it wins about {in10} in 10.")
 
 
 def render(t):
@@ -109,7 +108,7 @@ def render(t):
     d.text(s(110, 65), "BTC 5M", font=f(30), fill=TEXT, anchor="lm")
     d.text(s(290, 65), t["window_label"], font=f(26, False), fill=MUTED, anchor="lm")
     left = t["secs_left"]
-    clock = f"{left // 60}:{left % 60:02d} LEFT"
+    clock = f"TIMER {left // 60:02d}:{left % 60:02d}"
     cw = tw(d, clock, f(28)) + 52
     panel(img, (W - 40 - cw, 34, W - 40, 96), 31, (40, 30, 14), outline=GOLD)
     d.text(s(W - 40 - cw / 2, 65), clock, font=f(28), fill=GOLD, anchor="mm")
@@ -124,7 +123,7 @@ def render(t):
     d.rounded_rectangle(s(80, 254, 80 + pw, 298), radius=22 * K, fill=INK)
     d.text(s(80 + pw / 2, 276), pill, font=f(24), fill=acc, anchor="mm")
     left_s = t["secs_left"]
-    d.text(s(100 + pw, 276), f"Tap {'UP' if up else 'DOWN'} now · {left_s // 60}:{left_s % 60:02d} left",
+    d.text(s(100 + pw, 276), f"Tap {'Up' if up else 'Down'} at {t['price'] * 100:.0f}% or less",
            font=f(30), fill=INK, anchor="lm")
     cx, cy, rad = W - 148, 225, 76
     d.ellipse(s(cx - rad - 8, cy - rad - 8, cx + rad + 8, cy + rad + 8), fill=INK)
@@ -136,9 +135,10 @@ def render(t):
 
     # ---- stats, in plain English: reads left to right as one sentence
     cents = lambda v: f"{v * 100:.0f}\u00a2" if v * 100 >= 1 else f"{v * 100:.1f}\u00a2"
-    stats = [("IT COSTS", cents(t["price"]), TEXT, "per share, right now"),
-             ("OUR WIN CHANCE", f"{t['fair'] * 100:.0f}%", BLUE, f"so it's worth ~{t['fair'] * 100:.0f}¢"),
-             ("SO IT'S CHEAP BY", cents(t["ev"]), GREEN, "per share, after fees")]
+    btn = "UP" if up else "DOWN"
+    stats = [(f"APP SAYS {btn}", f"{t['price'] * 100:.0f}%", TEXT, "the button price now"),
+             (f"WE SAY {btn}", f"{t['fair'] * 100:.0f}%", BLUE, "our real win chance"),
+             ("YOUR EDGE", f"+{max(t['ev'] * 100, 0.1):.0f}%", GREEN, "after fees")]
     bw = (W - 80 - 2 * 20) / 3
     for i, (label, val, col, note) in enumerate(stats):
         x0 = 40 + i * (bw + 20)
@@ -153,9 +153,9 @@ def render(t):
     cy0, cy1 = 512, 772
     panel(img, (40, cy0, W - 40, cy1), 24)
     ptb, dist = t["ptb"], t["dist"]
-    d.text(s(66, cy0 + 34), f"BTC ${t['spot']:,.0f}", font=f(28), fill=TEXT, anchor="lm")
+    d.text(s(66, cy0 + 34), f"CURRENT ${t['spot']:,.2f}", font=f(28), fill=TEXT, anchor="lm")
     tag_col = GREEN if dist >= 0 else RED
-    tag = f"${abs(dist):,.0f} {'ABOVE' if dist >= 0 else 'BELOW'} PRICE TO BEAT"
+    tag = f"${abs(dist):,.0f} {'ABOVE' if dist >= 0 else 'BELOW'} TARGET"
     tgw = tw(d, tag, f(21)) + 32
     d.rounded_rectangle(s(W - 66 - tgw, cy0 + 14, W - 66, cy0 + 54), radius=20 * K,
                         fill=tuple(int(c * 0.22) for c in tag_col))
@@ -183,7 +183,7 @@ def render(t):
         while x < gx1:
             d.line(s(x, yb, min(x + 14, gx1), yb), fill=(200, 204, 214), width=3 * K)
             x += 24
-        d.text(s(gx1 - 4, yb - 16), f"PRICE TO BEAT ${ptb:,.0f}", font=f(15), fill=(200, 204, 214), anchor="rm")
+        d.text(s(gx1 - 4, yb - 16), f"TARGET ${ptb:,.2f}", font=f(15), fill=(200, 204, 214), anchor="rm")
         d.line([s(x, y) for x, y in line], fill=GOLD, width=5 * K, joint="curve")
         ex, ey = line[-1]
         gl = Image.new("RGBA", img.size, (0, 0, 0, 0))
