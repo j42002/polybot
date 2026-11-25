@@ -4,7 +4,7 @@ Rendered at 2x (2160x2160) so text stays sharp on phone screens.
 Read top to bottom in ~2 seconds:
   header : BTC 5M badge, window time, countdown pill
   hero   : BUY UP / BUY DOWN + tier, with a WIN CHANCE ring
-  stats  : you pay / fair value / edge
+  stats  : it costs -> it's really worth -> so it's cheap by (plain English)
   chart  : BTC's last ~3 min vs the price to beat (green zone = Up wins, red = Down wins)
   plain  : the bet in plain English (pay X, get $1 if right, lose X if wrong, wins ~N in 10)
   money  : what $10 wins or loses after the fee
@@ -131,19 +131,23 @@ def render(t):
     d.text(s(cx, cy - 8), f"{t['fair'] * 100:.0f}%", font=f(40), fill=TEXT, anchor="mm")
     d.text(s(cx, cy + 28), "WIN CHANCE", font=f(14), fill=MUTED, anchor="mm")
 
-    # ---- stats
-    stats = [("YOU PAY", f"{t['price'] * 100:.0f}¢", TEXT),
-             ("FAIR VALUE", f"{t['fair'] * 100:.0f}¢", BLUE),
-             ("EDGE", f"+{t['ev'] * 100:.1f}¢", GREEN)]
+    # ---- stats, in plain English: reads left to right as one sentence
+    cents = lambda v: f"{v * 100:.0f}\u00a2" if v * 100 >= 1 else f"{v * 100:.1f}\u00a2"
+    stats = [("IT COSTS", cents(t["price"]), TEXT, "per share, right now"),
+             ("IT'S REALLY WORTH", cents(t["fair"]), BLUE, "by our math"),
+             ("SO IT'S CHEAP BY", cents(t["ev"]), GREEN, "per share, after fees")]
     bw = (W - 80 - 2 * 20) / 3
-    for i, (label, val, col) in enumerate(stats):
+    for i, (label, val, col, note) in enumerate(stats):
         x0 = 40 + i * (bw + 20)
-        panel(img, (x0, 352, x0 + bw, 478), 24)
-        d.text(s(x0 + bw / 2, 384), label, font=f(21), fill=MUTED, anchor="mm")
-        d.text(s(x0 + bw / 2, 438), val, font=f(56), fill=col, anchor="mm")
+        panel(img, (x0, 350, x0 + bw, 492), 24)
+        d.text(s(x0 + bw / 2, 378), label, font=f(21), fill=MUTED, anchor="mm")
+        d.text(s(x0 + bw / 2, 428), val, font=f(54), fill=col, anchor="mm")
+        d.text(s(x0 + bw / 2, 470), note, font=f(17, False), fill=MUTED, anchor="mm")
+        if i < 2:
+            d.text(s(x0 + bw + 10, 421), "\u2192", font=f(22), fill=MUTED, anchor="mm")
 
     # ---- chart vs price to beat
-    cy0, cy1 = 500, 770
+    cy0, cy1 = 512, 772
     panel(img, (40, cy0, W - 40, cy1), 24)
     ptb, dist = t["ptb"], t["dist"]
     d.text(s(66, cy0 + 34), f"BTC ${t['spot']:,.0f}", font=f(28), fill=TEXT, anchor="lm")

@@ -324,11 +324,13 @@ def ticket_payload(row, stats):
 
 
 def record_text(stats, kind="JJ"):
+    """Paper record in plain English, e.g. 'JJ so far: won 9 of 14 (needs 52% to profit) - up $1.85 per share'."""
     n, hit, be = stats.get("n", 0), stats.get("hit"), stats.get("breakeven")
     if n and hit is not None and be is not None:
-        return (f"{kind} paper record: {n} bets \u00b7 hit {hit:.0%} vs {be:.0%} breakeven "
-                f"\u00b7 {stats.get('pnl', 0):+.2f}/share")
-    return f"{kind} paper record: no settled bets yet"
+        pnl = stats.get("pnl", 0)
+        return (f"{kind} so far: won {round(hit * n)} of {n} (needs {be:.0%} to make money) \u00b7 "
+                f"{'up' if pnl >= 0 else 'down'} ${abs(pnl):.2f} per share")
+    return f"{kind} so far: no finished bets yet"
 
 
 def card_png(row, prices, stats):
