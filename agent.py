@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v3"
+VERSION = "polybot agent v4"
 
 import csv
 import json
@@ -61,6 +61,11 @@ def window_start(ts):
 
 def slug_for(t_start):
     return f"btc-updown-5m-{t_start}"
+
+
+def market_url(slug):
+    """Direct link to the exact 5m contract (verified format: polymarket.com/event/<slug>)."""
+    return f"https://polymarket.com/event/{slug}"
 
 
 def fee_per_share(p):
@@ -239,7 +244,8 @@ def ticket_payload(row, stats):
         "username": "polybot",
         "embeds": [{
             "title": f"{'BUY UP' if side == 'Up' else 'BUY DOWN'} · BTC 5m · {left // 60}:{left % 60:02d} left",
-            "description": f"Window {label} ET · `{row['slug']}`",
+            "url": market_url(row["slug"]),
+            "description": f"Window {label} ET · [**Open this contract**]({market_url(row['slug'])})",
             "color": 0x2ECC71 if side == "Up" else 0xE74C3C,
             "fields": [
                 {"name": "Ask", "value": f"{price * 100:.0f}c", "inline": True},
@@ -248,6 +254,7 @@ def ticket_payload(row, stats):
                 {"name": "BTC vs price to beat", "value": f"${row['dist']:+,.0f}", "inline": True},
                 {"name": "Last 60s", "value": f"${(row['mom60'] or 0):+,.0f}", "inline": True},
                 {"name": "Window closes", "value": f"in {left}s", "inline": True},
+                {"name": "Contract", "value": f"[{row['slug']}]({market_url(row['slug'])})", "inline": False},
             ],
             "footer": {"text": f"PAPER · UNVALIDATED · not advice · {record}"},
         }],
