@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v4"
+VERSION = "polybot agent v5"
 
 import csv
 import json
@@ -35,7 +35,9 @@ STATS = os.path.join("data", "jj_stats.json")
 ET = ZoneInfo("America/New_York")
 RUN_MINUTES = float(os.getenv("RUN_MINUTES", "55"))
 POLL_SEC = 2.0
-FEE_RATE = 0.05                   # Polymarket BTC 5m taker fee: C * 0.05 * p * (1-p)
+VENUE = os.getenv("VENUE", "us")  # "us" = Polymarket US app (what Jacob trades); "intl" = polymarket.com
+# fee per share = FEE_RATE * p * (1-p). intl BTC 5m = 0.05 (docs). US = the market's feeCoefficient (0.095 seen live).
+FEE_RATE = 0.095 if VENUE == "us" else 0.05
 EDGE_MIN = 0.03                   # edge strategy needs >= 3c expected value after fees
 BASIS_SD = float(os.getenv("BASIS_SD", "15"))  # $ noise between Coinbase and Chainlink; grade.py measures the real value
 DATA = os.path.join("data", "checkpoints.csv")
@@ -43,13 +45,14 @@ DATA = os.path.join("data", "checkpoints.csv")
 COINBASE = "https://api.exchange.coinbase.com/products/BTC-USD/ticker"
 GAMMA = "https://gamma-api.polymarket.com/events"
 CLOB_BOOK = "https://clob.polymarket.com/book"
+US_GATEWAY = "https://gateway.polymarket.us/v1"   # public, no key: events/slug/<slug>, markets/<slug>/bbo
 HEADERS = {"User-Agent": "polybot-paper/1 (research, log-only)"}
 
 FIELDS = [
     "logged_utc", "slug", "t_start", "secs_left", "spot", "spot_open", "ptb_proxy",
     "dist", "mom60", "sigma", "model_up", "up_ask", "up_bid", "down_ask", "down_bid",
     "quote_src", "mom_side", "mom_price", "lean_side", "lean_price",
-    "edge_side", "edge_price", "edge_ev", "jj_side", "jj_price", "jj_ev", "version",
+    "edge_side", "edge_price", "edge_ev", "jj_side", "jj_price", "jj_ev", "venue", "fee_rate", "version",
 ]
 
 
@@ -63,8 +66,16 @@ def slug_for(t_start):
     return f"btc-updown-5m-{t_start}"
 
 
+def us_slug_for(t_start):
+    """Polymarket US slug, e.g. btc-updown-5m-2026-11-25-1040z (window start, UTC)."""
+    return "btc-updown-5m-" + datetime.fromtimestamp(t_start, timezone.utc).strftime("%Y-%m-%d-%H%Mz")
+
+
 def market_url(slug):
-    """Direct link to the exact 5m contract (verified format: polymarket.com/event/<slug>)."""
+    """Direct link to the exact contract. US slugs open polymarket.us (the US app);
+    numeric slugs open polymarket.com. Both formats verified live."""
+    if slug.endswith("z") and slug.count("-") >= 5:
+        return f"https://polymarket.us/event/{slug}"
     return f"https://polymarket.com/event/{slug}"
 
 
@@ -166,6 +177,36 @@ def get_market(session, slug):
     tokens = json.loads(m["clobTokenIds"])
     ids = dict(zip(outcomes, tokens))
     return {"up_token": ids.get("Up"), "down_token": ids.get("Down"), "slug": slug}
+
+
+def get_us_market(session, t0):
+    """US event for this window: market slug + the REAL price to beat (BRTI, set at window start)."""
+    slug = us_slug_for(t0)
+    r = session.get(f"{US_GATEWAY}/events/slug/{slug}", headers=HEADERS, timeout=8)
+    if r.status_code == 404:
+        return None
+    r.raise_for_status()
+    m = r.json()["event"]["markets"][0]
+    terms = m.get("assetPriceTerms") or {}
+    ptb = (terms.get("priceToBeat") or {}).get("value")
+    return {"slug": slug, "mkt": m["slug"], "ptb": float(ptb) if ptb else None,
+            "fee": float(m.get("feeCoefficient") or FEE_RATE)}
+
+
+def get_us_quotes(session, mkt_slug):
+    """US top of book. longQuote = price to buy Up, shortQuote = price to buy Down."""
+    try:
+        r = session.get(f"{US_GATEWAY}/markets/{mkt_slug}/bbo", headers=HEADERS, timeout=6)
+        r.raise_for_status()
+        d = r.json()["marketData"]
+        val = lambda k: float(d[k]["value"]) if d.get(k) else None
+        ua, da, ub, ba = val("longQuote"), val("shortQuote"), val("bestBid"), val("bestAsk")
+        ok = lambda p: p if p is not None and 0 < p < 1 else None
+        return {"quote_src": "us_bbo", "up_ask": ok(ua), "down_ask": ok(da),
+                "up_bid": ok(ub), "down_bid": ok(round(1 - ba, 4)) if ba else None}
+    except Exception as e:
+        print(f"  us bbo failed ({e.__class__.__name__}) - no quotes this checkpoint")
+        return {"quote_src": "error", "up_ask": None, "up_bid": None, "down_ask": None, "down_bid": None}
 
 
 def book_top(session, token):
@@ -282,26 +323,38 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
         return None
     ptb, spot_open = opens[t0]
     spot = buf[-1][1]
+    us = None
+    if VENUE == "us":
+        us = get_us_market(session, t0)
+        if not us:
+            print(f"  {us_slug_for(t0)} not found on Polymarket US - skip")
+            return None
+        if us["ptb"]:
+            ptb = us["ptb"]          # real BRTI price to beat beats our Coinbase proxy
     sigma = sigma_per_sec(buf, now)
     if sigma is None:
         print(f"  {t0} {secs_left}s: not enough price history for volatility - skip")
         return None
     then = price_near(buf, now - 60)
     mom60 = spot - then if then else None
-    if t0 not in markets:
-        markets[t0] = get_market(session, slug_for(t0))
-    mkt = markets[t0]
-    if not mkt:
-        print(f"  {slug_for(t0)} not found on Gamma - skip")
-        return None
-    q = get_quotes(session, mkt)
+    if us:
+        q = get_us_quotes(session, us["mkt"])
+    else:
+        if t0 not in markets:
+            markets[t0] = get_market(session, slug_for(t0))
+        mkt = markets[t0]
+        if not mkt:
+            print(f"  {slug_for(t0)} not found on Gamma - skip")
+            return None
+        q = get_quotes(session, mkt)
     p_up = model_p_up(spot, ptb, sigma, secs_left)
     picks = pick_strategies(spot, ptb, mom60, p_up, q)
     jj_done = jj_done if jj_done is not None else set()
     picks["jj"] = pick_jj(p_up, q, secs_left) if t0 not in jj_done else (None, None, None)
     row = {
         "logged_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "slug": slug_for(t0), "t_start": t0, "secs_left": secs_left,
+        "slug": us["slug"] if us else slug_for(t0), "t_start": t0, "secs_left": secs_left,
+        "venue": VENUE, "fee_rate": FEE_RATE,
         "spot": spot, "spot_open": spot_open, "ptb_proxy": fmt(ptb, 2),
         "dist": fmt(spot - ptb, 2), "mom60": fmt(mom60, 2), "sigma": f"{sigma:.3e}",
         "model_up": fmt(p_up), "quote_src": q["quote_src"],
@@ -323,7 +376,7 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
 
 
 def main():
-    print(f"{VERSION} | paper only | running {RUN_MINUTES:g} min | checkpoints {CHECKPOINTS}s left")
+    print(f"{VERSION} | venue {VENUE} | fee {FEE_RATE} | paper only | running {RUN_MINUTES:g} min | checkpoints {CHECKPOINTS}s left")
     upgrade_header()
     session = requests.Session()
     jj_done = set()
@@ -365,7 +418,8 @@ def test_ticket():
     """Send one sample ticket so you can check Discord delivery. Marked TEST."""
     import sys
     row = {"jj_side": "Up", "jj_price": 0.52, "jj_ev": 0.061, "model_up": 0.594,
-           "secs_left": 240, "t_start": window_start(time.time()), "slug": slug_for(window_start(time.time())),
+           "secs_left": 240, "t_start": window_start(time.time()),
+           "slug": us_slug_for(window_start(time.time())) if VENUE == "us" else slug_for(window_start(time.time())),
            "dist": 18.0, "mom60": 7.0}
     p = ticket_payload(row, load_stats())
     p["content"] = "TEST TICKET - delivery check only, not a signal."

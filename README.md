@@ -1,6 +1,8 @@
 # polybot
 
-Paper-trading scout for Polymarket **BTC Up or Down 5m** markets. Log-only: it never places orders and needs no keys.
+Paper-trading scout for **Polymarket US** (the app) **BTC Up or Down 5m** markets. Set `VENUE=intl` to scan polymarket.com instead.
+
+Polymarket US is a separate exchange: own order book, settles on CF Benchmarks BRTI (not Chainlink), fee coefficient 0.095. polybot reads its public gateway (no key): the real price to beat, live Up/Down prices, and settled results. Log-only: it never places orders and needs no keys.
 
 ## What it does
 - `agent.py`: watches BTC (Coinbase, every 2s) and the live Polymarket odds. At 3:00, 2:00 and 1:00 left in every window it paper-bets 3 strategies:

@@ -14,7 +14,7 @@ Verdict rules are fixed in advance so the goalposts can't move:
   95% CI entirely below 0  -> LOSES
   otherwise                -> NO EDGE
 """
-VERSION = "polybot grader v3"
+VERSION = "polybot grader v4"
 
 import csv
 import json
@@ -26,6 +26,8 @@ from datetime import datetime, timezone
 import requests
 
 GAMMA = "https://gamma-api.polymarket.com/events"
+US_GATEWAY = "https://gateway.polymarket.us/v1"
+GOOD_QUOTES = ("clob", "us_bbo")   # rows priced from a live order book
 HEADERS = {"User-Agent": "polybot-paper/1 (research, log-only)"}
 CHECKS = os.path.join("data", "checkpoints.csv")
 RESULTS = os.path.join("data", "results.csv")
@@ -70,6 +72,26 @@ def parse_result(event):
     return winners[0], meta.get("priceToBeat"), meta.get("finalPrice")
 
 
+def is_us(slug):
+    return slug.endswith("z") and slug.count("-") >= 5
+
+
+def fetch_us_result(s, slug):
+    """US settles on BRTI: settlementPx 1 = Up won, 0 = Down won."""
+    r = s.get(f"{US_GATEWAY}/events/slug/{slug}", headers=HEADERS, timeout=8)
+    r.raise_for_status()
+    m = r.json()["event"]["markets"][0]
+    if not m.get("closed"):
+        return None
+    b = s.get(f"{US_GATEWAY}/markets/{m['slug']}/bbo", headers=HEADERS, timeout=8).json()["marketData"]
+    px = float((b.get("settlementPx") or {}).get("value", "nan"))
+    if px not in (0.0, 1.0):
+        return None
+    t = m.get("assetPriceTerms") or {}
+    return ("Up" if px == 1.0 else "Down",
+            (t.get("priceToBeat") or {}).get("value"), (t.get("settlementPrice") or {}).get("value"))
+
+
 def fetch_results(slugs, known):
     s = requests.Session()
     new = []
@@ -79,10 +101,13 @@ def fetch_results(slugs, known):
         if time.time() < int(t_start) + 300 + 180:   # give settlement ~3 min
             continue
         try:
-            r = s.get(GAMMA, params={"slug": slug}, headers=HEADERS, timeout=8)
-            r.raise_for_status()
-            ev = r.json()
-            res = parse_result(ev[0]) if ev else None
+            if is_us(slug):
+                res = fetch_us_result(s, slug)
+            else:
+                r = s.get(GAMMA, params={"slug": slug}, headers=HEADERS, timeout=8)
+                r.raise_for_status()
+                ev = r.json()
+                res = parse_result(ev[0]) if ev else None
         except Exception as e:
             print(f"  fetch {slug} failed: {e!r}")
             res = None
@@ -94,11 +119,11 @@ def fetch_results(slugs, known):
     return new
 
 
-def bet_pnl(side, price, winner):
+def bet_pnl(side, price, winner, fee_rate=None):
     """P&L per share after taker fee. None if no bet."""
     if not side or price is None or not 0 < price < 1:
         return None
-    fee = FEE_RATE * price * (1 - price)
+    fee = (fee_rate if fee_rate is not None else FEE_RATE) * price * (1 - price)
     return (1 - price if side == winner else -price) - fee
 
 
@@ -129,7 +154,7 @@ def brier(pairs):
 def build_report(rows, results):
     res = {r["slug"]: r for r in results}
     # only rows priced from the live order book count (v1 rows priced from Gamma's stale cache are dropped)
-    graded = [r for r in rows if r["slug"] in res and r.get("quote_src") == "clob"]
+    graded = [r for r in rows if r["slug"] in res and r.get("quote_src") in GOOD_QUOTES]
     lines = [f"# polybot report", "",
              f"Updated {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} | "
              f"{len(rows)} checkpoints logged | {len(graded)} graded | "
@@ -145,7 +170,7 @@ def build_report(rows, results):
             pnls, prices, wins = [], [], 0
             for r in sub:
                 side, price = r.get(f"{key}_side"), fnum(r.get(f"{key}_price"))
-                pnl = bet_pnl(side, price, res[r["slug"]]["winner"])
+                pnl = bet_pnl(side, price, res[r["slug"]]["winner"], fnum(r.get("fee_rate")))
                 if pnl is not None:
                     pnls.append(pnl)
                     prices.append(price)
@@ -196,10 +221,10 @@ def jj_stats(rows, results):
     res = {r["slug"]: r for r in results}
     pnls, prices, wins = [], [], 0
     for r in rows:
-        if r["slug"] not in res or r.get("quote_src") != "clob":
+        if r["slug"] not in res or r.get("quote_src") not in GOOD_QUOTES:
             continue
         side, price = r.get("jj_side"), fnum(r.get("jj_price"))
-        pnl = bet_pnl(side, price, res[r["slug"]]["winner"])
+        pnl = bet_pnl(side, price, res[r["slug"]]["winner"], fnum(r.get("fee_rate")))
         if pnl is not None:
             pnls.append(pnl); prices.append(price); wins += side == res[r["slug"]]["winner"]
     s = summarize(pnls, prices, wins)
