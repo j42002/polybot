@@ -14,7 +14,7 @@ Verdict rules are fixed in advance so the goalposts can't move:
   95% CI entirely below 0  -> LOSES
   otherwise                -> NO EDGE
 """
-VERSION = "polybot grader v6"
+VERSION = "polybot grader v7"
 
 import csv
 import json
@@ -214,7 +214,10 @@ def build_report(rows, results):
             sd = math.sqrt(sum((x - m) ** 2 for x in e) / (len(e) - 1))
             lines.append(f"- {name}: n={len(e)}, bias ${m:+.2f}, sd ${sd:.2f} "
                          f"(set BASIS_SD near {sd:.0f})")
-    lines += calibration_lines(graded, res) + latency_lines()
+    best, n = fit_sigma(graded, res)
+    tune = ([f"- Model volatility fitted on {n} settled checks: x{best[0]} (Brier {best[1]:.4f})"] if best
+            else [f"- Model volatility: default x1.4 until {TUNE_MIN} settled checks ({n} so far)"])
+    lines += calibration_lines(graded, res) + ["", "## Model tuning", ""] + tune + latency_lines()
     lines += ["", f"_{VERSION}_"]
     return "\n".join(lines)
 
@@ -234,6 +237,31 @@ def jj_stats(rows, results, key="jj"):
         return {"n": 0}
     return {"n": s["n"], "hit": round(s["hit"], 4), "breakeven": round(s["avg_price"], 4),
             "pnl": round(s["mean"] * s["n"], 2), "verdict": s["verdict"]}
+
+
+TUNE = os.path.join("data", "model_tune.json")
+TUNE_MIN = 150                     # settled rows needed before the fit replaces the 1.4x default
+
+
+def fit_sigma(graded, res):
+    """Pick the volatility multiplier that best predicts real outcomes (lowest Brier score)."""
+    import agent
+    rows = []
+    for r in graded:
+        spot, ptb, sig, left = fnum(r.get("spot")), fnum(r.get("ptb_proxy")), fnum(r.get("sigma")), fnum(r.get("secs_left"))
+        if None in (spot, ptb, sig, left):
+            continue
+        rows.append((spot, ptb, sig, left, 1.0 if res[r["slug"]]["winner"] == "Up" else 0.0))
+    if len(rows) < TUNE_MIN:
+        return None, len(rows)
+    best = None
+    for k in [x / 10 for x in range(8, 31)]:
+        b = sum((agent.model_p_up(sp, pt, sg, lf, mult=k, cap=0.999) - y) ** 2 for sp, pt, sg, lf, y in rows) / len(rows)
+        if best is None or b < best[1]:
+            best = (k, b)
+    with open(TUNE, "w", encoding="utf-8") as f:
+        json.dump({"sigma_mult": best[0], "brier": round(best[1], 4), "n": len(rows)}, f)
+    return best, len(rows)
 
 
 def calibration_lines(graded, res):

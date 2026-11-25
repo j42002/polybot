@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v10"
+VERSION = "polybot agent v11"
 
 import csv
 import json
@@ -131,12 +131,40 @@ def sigma_per_sec(buf, now, lookback=600, min_samples=60):
     return math.sqrt(sq / dt) if dt > 0 else None
 
 
-def model_p_up(spot, ptb, sigma, secs_left, basis_sd=BASIS_SD):
-    """P(final 60s TWAP >= price to beat) under a driftless random walk.
+def load_tune():
+    """Volatility multiplier fitted by grade.py on real settled rounds (data/model_tune.json)."""
+    try:
+        with open(os.path.join("data", "model_tune.json"), encoding="utf-8") as f:
+            return float(json.load(f)["sigma_mult"])
+    except Exception:
+        return 1.4
+
+
+# v11: BTC jumps more than a smooth random walk allows (6:40 round: $77 below with 2:00 left,
+# model said 91% Down, BTC rose $89 and Up won). So the model widens its volatility
+# (fitted on real results by grade.py, 1.4x until there's enough data) and never claims
+# more than PROB_CAP either way.
+SIGMA_MULT = load_tune()
+PROB_CAP = 0.88
+SPIKE_SD = 2.0                     # no ticket right after a 60s move bigger than 2 normal 60s moves
+
+
+def model_p_up(spot, ptb, sigma, secs_left, basis_sd=BASIS_SD, mult=None, cap=None):
+    """P(final average >= price to beat) under a random walk with widened volatility.
     The last 60s are averaged, so the effective remaining time is secs_left - 40."""
+    mult = SIGMA_MULT if mult is None else mult
+    cap = PROB_CAP if cap is None else cap
     t_eff = max(secs_left - 40.0, 1.0)
-    sd = math.sqrt((spot * sigma) ** 2 * t_eff + basis_sd ** 2)
-    return norm_cdf((spot - ptb) / sd) if sd > 0 else (1.0 if spot >= ptb else 0.0)
+    sd = math.sqrt((spot * sigma * mult) ** 2 * t_eff + basis_sd ** 2)
+    p = norm_cdf((spot - ptb) / sd) if sd > 0 else (1.0 if spot >= ptb else 0.0)
+    return min(max(p, 1 - cap), cap)
+
+
+def spiked(spot, sigma, mom60):
+    """True right after an unusually sharp 60s move (reversal risk)."""
+    if not (sigma and mom60):
+        return False
+    return abs(mom60) > SPIKE_SD * spot * sigma * math.sqrt(60)
 
 
 def pick_strategies(spot, ptb, mom60, p_up, q):
@@ -334,7 +362,7 @@ def ticket_payload(row, stats):
                 {"name": "Window closes", "value": f"in {left}s", "inline": True},
                 {"name": "Contract", "value": f"[{row['slug']}]({market_url(row['slug'])})", "inline": False},
             ],
-            "footer": {"text": f"PAPER · UNVALIDATED · not advice · {record}"},
+            "footer": {"text": "paper signal \u00b7 not advice"},
         }],
     }
 
@@ -654,6 +682,8 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
         fair = p_up if side == "Up" else 1 - p_up
         if choppy(buf, now):
             print("  last 60s too choppy (reversal risk) - no ticket")
+        elif spiked(spot, sigma, mom60):
+            print(f"  sharp 60s move (${mom60:+,.0f}) - reversal risk, no ticket")
         elif us is None:
             pass
         else:
@@ -681,7 +711,7 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
 
 
 def main():
-    print(f"{VERSION} | venue {VENUE} | fee {FEE_RATE} | paper only | running {RUN_MINUTES:g} min | checkpoints {CHECKPOINTS}s left")
+    print(f"{VERSION} | sigma x{SIGMA_MULT} cap {PROB_CAP:.0%} | venue {VENUE} | fee {FEE_RATE} | paper only | running {RUN_MINUTES:g} min | checkpoints {CHECKPOINTS}s left")
     upgrade_header()
     session = requests.Session()
     jj_done = set()

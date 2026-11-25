@@ -21,3 +21,13 @@ Polymarket US is a separate exchange: own order book, settles on CF Benchmarks B
 
 ## Runs itself
 GitHub Actions starts it every 20 minutes and each run lasts 55 minutes, so it runs around the clock. The repo is public because Actions minutes are free and unlimited on public repos. A private repo gets 2,000 minutes a month, which this would use up in about 2 days.
+
+## How a ticket is made (v11)
+1. Only at 4:00 or 3:30 left (JJ). SAFE tickets are paused: late-window favorites move faster than a human can tap.
+2. Edge must be 6% to 15% after the fee. A bigger "edge" usually means stale or fast-moving data.
+3. No ticket when the last 60s are choppy (2x normal volatility) or after a sharp 60s spike.
+4. The live US price is re-read right before sending; no ticket if the edge is gone.
+5. After sending, the price is re-read at +5/10/20/30/45/60s. If it passes the card's "up to" price, the Discord message is stamped EXPIRED.
+6. Paper results use the price 30s after the ticket (human speed). If it ran away, the ticket is MISSED.
+7. The model never claims more than 88%, and its volatility is re-fitted on real settled rounds once there are 150 (data/model_tune.json).
+8. Every ticket logs timestamps (price read, decision, Discord sent, Discord ms) to data/tickets.csv; report.md shows speed and calibration.
