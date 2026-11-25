@@ -241,8 +241,14 @@ def build_report(rows, results):
             sd = math.sqrt(sum((x - m) ** 2 for x in e) / (len(e) - 1))
             lines.append(f"- {name}: n={len(e)}, bias ${m:+.2f}, sd ${sd:.2f} "
                          f"(set BASIS_SD near {sd:.0f})")
-    best, info = fit_sigma(graded, res)
-    tune = tune_lines(best, info)
+    import agent
+    if agent.MODEL_FROZEN:
+        # frozen experiment: the fit is NOT run, nothing is written, the model cannot drift
+        tune = [f"- **Model frozen for the experiment:** {agent.model_id()}. Automatic tuning is off; "
+                "data/model_tune.json is neither written nor read."]
+    else:
+        best, info = fit_sigma(graded, res)
+        tune = tune_lines(best, info)
     lines += calibration_lines(graded, res) + ["", "## Model tuning", ""] + tune + forward_lines(graded, res) + funnel_lines(graded, res) + settlement_lines(res) + honest_lines() + latency_lines() + loop_lines() + team_lines() + legacy_lines()
     lines += ["", f"_{VERSION}_"]
     return "\n".join(lines)

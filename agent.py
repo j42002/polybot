@@ -77,7 +77,11 @@ VENUE = os.getenv("VENUE", "us")  # "us" = Polymarket US app (what Jacob trades)
 # fee per share = FEE_RATE * p * (1-p). intl BTC 5m = 0.05 (docs). US = the market's feeCoefficient (0.095 seen live).
 FEE_RATE = 0.095 if VENUE == "us" else 0.05
 EDGE_MIN = 0.03                   # edge strategy needs >= 3c expected value after fees
-BASIS_SD = float(os.getenv("BASIS_SD", "15"))  # $ noise between Coinbase and Chainlink; grade.py measures the real value
+# FROZEN EXPERIMENT (from v18, agreed with ChatGPT 2026-11-25): the prediction model cannot change.
+# No tuning file, no env override. Changing any of these means a new experiment, by hand, on purpose.
+MODEL_FROZEN = True
+FROZEN_MODEL = {"sigma_mult": 1.4, "prob_cap": 0.88, "basis_sd": 15.0}
+BASIS_SD = FROZEN_MODEL["basis_sd"] if MODEL_FROZEN else float(os.getenv("BASIS_SD", "15"))
 DATA = os.path.join("data", "checkpoints.csv")
 
 COINBASE = "https://api.exchange.coinbase.com/products/BTC-USD/ticker"
@@ -206,8 +210,8 @@ def load_tune():
 # model said 91% Down, BTC rose $89 and Up won). So the model widens its volatility
 # (fitted on real results by grade.py, 1.4x until there's enough data) and never claims
 # more than PROB_CAP either way.
-SIGMA_MULT = load_tune()
-PROB_CAP = 0.88
+SIGMA_MULT = FROZEN_MODEL["sigma_mult"] if MODEL_FROZEN else load_tune()
+PROB_CAP = FROZEN_MODEL["prob_cap"] if MODEL_FROZEN else 0.88
 SPIKE_SD = 2.0                     # no ticket right after a 60s move bigger than 2 normal 60s moves
 
 
