@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v2"
+VERSION = "polybot agent v3"
 
 import csv
 import json
@@ -21,11 +21,18 @@ import os
 import time
 from collections import deque
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import requests
 
 WINDOW = 300                      # 5-minute markets
-CHECKPOINTS = (180, 120, 60)      # seconds left when the agent decides
+CHECKPOINTS = (240, 210, 180, 120, 60)  # seconds left when the agent decides
+JJ_CHECKPOINTS = (240, 210)        # JJ strategy only enters 60-90s into the window
+JJ_PRICE = (0.35, 0.70)            # ...and only at the prices the top directional traders pay
+JJ_EDGE = 0.04                     # ...and only with 4c+ expected value after the fee
+WEBHOOK = os.getenv("DISCORD_WEBHOOK", "")
+STATS = os.path.join("data", "jj_stats.json")
+ET = ZoneInfo("America/New_York")
 RUN_MINUTES = float(os.getenv("RUN_MINUTES", "55"))
 POLL_SEC = 2.0
 FEE_RATE = 0.05                   # Polymarket BTC 5m taker fee: C * 0.05 * p * (1-p)
@@ -42,7 +49,7 @@ FIELDS = [
     "logged_utc", "slug", "t_start", "secs_left", "spot", "spot_open", "ptb_proxy",
     "dist", "mom60", "sigma", "model_up", "up_ask", "up_bid", "down_ask", "down_bid",
     "quote_src", "mom_side", "mom_price", "lean_side", "lean_price",
-    "edge_side", "edge_price", "edge_ev", "version",
+    "edge_side", "edge_price", "edge_ev", "jj_side", "jj_price", "jj_ev", "version",
 ]
 
 
@@ -115,6 +122,23 @@ def pick_strategies(spot, ptb, mom60, p_up, q):
     return out
 
 
+def pick_jj(p_up, q, secs_left):
+    """JJ strategy, built from the top-10 BTC 5m traders' own fills (Nov 2026):
+    the directional winners enter 60-120s into the window at 35-70c and never
+    chase 85c+ favorites. JJ = that timing and price band, plus our model must
+    beat the live ask by JJ_EDGE after the fee. One bet per window max."""
+    if secs_left not in JJ_CHECKPOINTS:
+        return (None, None, None)
+    best = (None, None, None)
+    for side, p in (("Up", p_up), ("Down", 1 - p_up)):
+        ask = q.get(f"{side.lower()}_ask")
+        if ask and JJ_PRICE[0] <= ask <= JJ_PRICE[1]:
+            ev = p - ask - fee_per_share(ask)
+            if ev >= JJ_EDGE and (best[2] is None or ev > best[2]):
+                best = (side, ask, round(ev, 4))
+    return best
+
+
 # ---------- network ----------
 
 def get_spot(session):
@@ -163,6 +187,25 @@ def get_quotes(session, mkt):
 
 # ---------- logging ----------
 
+def upgrade_header(path=DATA):
+    """If the CSV was written by an older version with fewer columns, rewrite it
+    under the current header (old rows keep their values, new columns blank)."""
+    if not os.path.exists(path):
+        return
+    with open(path, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+        f.seek(0)
+        header = next(csv.reader(f), [])
+    if header == FIELDS:
+        return
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=FIELDS)
+        w.writeheader()
+        for r in rows:
+            w.writerow({k: r.get(k) for k in FIELDS})
+    print(f"upgraded {path} header ({len(rows)} rows kept)")
+
+
 def append_row(row, path=DATA):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     new = not os.path.exists(path)
@@ -173,11 +216,60 @@ def append_row(row, path=DATA):
         w.writerow({k: row.get(k) for k in FIELDS})
 
 
+def load_stats():
+    try:
+        with open(STATS, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def ticket_payload(row, stats):
+    side, price, ev = row["jj_side"], row["jj_price"], row["jj_ev"]
+    fair = row["model_up"] if side == "Up" else round(1 - row["model_up"], 4)
+    left = row["secs_left"]
+    t0 = datetime.fromtimestamp(row["t_start"], ET)
+    t1 = datetime.fromtimestamp(row["t_start"] + WINDOW, ET)
+    label = f"{t0.strftime('%I:%M').lstrip('0')}-{t1.strftime('%I:%M %p').lstrip('0')}"
+    n, hit, be = stats.get("n", 0), stats.get("hit"), stats.get("breakeven")
+    record = (f"JJ paper record: {n} bets, hit {hit:.0%} vs breakeven {be:.0%}, "
+              f"P&L {stats.get('pnl', 0):+.2f}/share ({stats.get('verdict', '')})"
+              if n and hit is not None and be is not None else "JJ paper record: no settled bets yet")
+    return {
+        "username": "polybot",
+        "embeds": [{
+            "title": f"{'BUY UP' if side == 'Up' else 'BUY DOWN'} · BTC 5m · {left // 60}:{left % 60:02d} left",
+            "description": f"Window {label} ET · `{row['slug']}`",
+            "color": 0x2ECC71 if side == "Up" else 0xE74C3C,
+            "fields": [
+                {"name": "Ask", "value": f"{price * 100:.0f}c", "inline": True},
+                {"name": "Our fair value", "value": f"{fair * 100:.0f}c", "inline": True},
+                {"name": "Edge after fee", "value": f"{ev * 100:+.1f}c", "inline": True},
+                {"name": "BTC vs price to beat", "value": f"${row['dist']:+,.0f}", "inline": True},
+                {"name": "Last 60s", "value": f"${(row['mom60'] or 0):+,.0f}", "inline": True},
+                {"name": "Window closes", "value": f"in {left}s", "inline": True},
+            ],
+            "footer": {"text": f"PAPER · UNVALIDATED · not advice · {record}"},
+        }],
+    }
+
+
+def post_ticket(session, row):
+    if not WEBHOOK:
+        print("  (no DISCORD_WEBHOOK set - ticket not sent)")
+        return
+    try:
+        r = session.post(WEBHOOK, json=ticket_payload(row, load_stats()), timeout=6)
+        print(f"  ticket sent to Discord ({r.status_code})")
+    except Exception as e:
+        print(f"  ticket failed: {e!r}")
+
+
 def fmt(x, nd=4):
     return None if x is None else round(x, nd)
 
 
-def decide(session, buf, t0, secs_left, opens, markets, now):
+def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
     if opens.get(t0) is None:
         print(f"  {t0} {secs_left}s: no open price (agent started mid-window) - skip")
         return None
@@ -198,6 +290,8 @@ def decide(session, buf, t0, secs_left, opens, markets, now):
     q = get_quotes(session, mkt)
     p_up = model_p_up(spot, ptb, sigma, secs_left)
     picks = pick_strategies(spot, ptb, mom60, p_up, q)
+    jj_done = jj_done if jj_done is not None else set()
+    picks["jj"] = pick_jj(p_up, q, secs_left) if t0 not in jj_done else (None, None, None)
     row = {
         "logged_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "slug": slug_for(t0), "t_start": t0, "secs_left": secs_left,
@@ -209,17 +303,23 @@ def decide(session, buf, t0, secs_left, opens, markets, now):
         "mom_side": picks["mom"][0], "mom_price": picks["mom"][1],
         "lean_side": picks["lean"][0], "lean_price": picks["lean"][1],
         "edge_side": picks["edge"][0], "edge_price": picks["edge"][1], "edge_ev": picks["edge"][2],
+        "jj_side": picks["jj"][0], "jj_price": picks["jj"][1], "jj_ev": picks["jj"][2],
         "version": VERSION,
     }
     append_row(row)
+    if row["jj_side"]:
+        jj_done.add(t0)
+        post_ticket(session, row)
     print(f"  {row['slug']} {secs_left}s left | dist {row['dist']:+} | model Up {p_up:.0%} "
-          f"| market Up ask {q.get('up_ask')} | mom={picks['mom'][0]} lean={picks['lean'][0]} edge={picks['edge'][0]}")
+          f"| market Up ask {q.get('up_ask')} | mom={picks['mom'][0]} lean={picks['lean'][0]} edge={picks['edge'][0]} jj={picks['jj'][0]}")
     return row
 
 
 def main():
     print(f"{VERSION} | paper only | running {RUN_MINUTES:g} min | checkpoints {CHECKPOINTS}s left")
+    upgrade_header()
     session = requests.Session()
+    jj_done = set()
     buf = deque(maxlen=900)         # ~30 min of 2s samples
     opens, markets, done = {}, {}, set()
     first_window = window_start(time.time())
@@ -246,7 +346,7 @@ def main():
             if (t0, cp) not in done and cp - 15 < left <= cp and buf:
                 done.add((t0, cp))
                 try:
-                    if decide(session, buf, t0, cp, opens, markets, now):
+                    if decide(session, buf, t0, cp, opens, markets, now, jj_done):
                         rows += 1
                 except Exception as e:
                     print(f"  checkpoint error {t0} {cp}s: {e!r}")

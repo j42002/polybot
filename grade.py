@@ -14,7 +14,7 @@ Verdict rules are fixed in advance so the goalposts can't move:
   95% CI entirely below 0  -> LOSES
   otherwise                -> NO EDGE
 """
-VERSION = "polybot grader v2"
+VERSION = "polybot grader v3"
 
 import csv
 import json
@@ -30,6 +30,7 @@ HEADERS = {"User-Agent": "polybot-paper/1 (research, log-only)"}
 CHECKS = os.path.join("data", "checkpoints.csv")
 RESULTS = os.path.join("data", "results.csv")
 REPORT = os.path.join("data", "report.md")
+STATS = os.path.join("data", "jj_stats.json")
 FEE_RATE = 0.05
 SHARES = 10            # paper size per bet, for dollar figures
 MIN_BETS = 300
@@ -37,7 +38,8 @@ MAX_FETCH = 400        # Gamma lookups per run
 RES_FIELDS = ["slug", "t_start", "winner", "ptb_true", "final_true", "graded_utc"]
 STRATS = [("mom", "Momentum (bet the last-60s direction)"),
           ("lean", "Lean (bet the side BTC is on now)"),
-          ("edge", "Edge (model beats the ask by 3c+)")]
+          ("edge", "Edge (model beats the ask by 3c+)"),
+          ("jj", "JJ (60-90s in, 35-70c ask, model +4c)")]
 
 
 def fnum(x):
@@ -142,7 +144,7 @@ def build_report(rows, results):
         for key, label in STRATS:
             pnls, prices, wins = [], [], 0
             for r in sub:
-                side, price = r[f"{key}_side"], fnum(r[f"{key}_price"])
+                side, price = r.get(f"{key}_side"), fnum(r.get(f"{key}_price"))
                 pnl = bet_pnl(side, price, res[r["slug"]]["winner"])
                 if pnl is not None:
                     pnls.append(pnl)
@@ -190,8 +192,25 @@ def build_report(rows, results):
     return "\n".join(lines)
 
 
+def jj_stats(rows, results):
+    res = {r["slug"]: r for r in results}
+    pnls, prices, wins = [], [], 0
+    for r in rows:
+        if r["slug"] not in res or r.get("quote_src") != "clob":
+            continue
+        side, price = r.get("jj_side"), fnum(r.get("jj_price"))
+        pnl = bet_pnl(side, price, res[r["slug"]]["winner"])
+        if pnl is not None:
+            pnls.append(pnl); prices.append(price); wins += side == res[r["slug"]]["winner"]
+    s = summarize(pnls, prices, wins)
+    if not s:
+        return {"n": 0}
+    return {"n": s["n"], "hit": round(s["hit"], 4), "breakeven": round(s["avg_price"], 4),
+            "pnl": round(s["mean"] * s["n"], 2), "verdict": s["verdict"]}
+
+
 def main():
-    rows = read_csv(CHECKS)
+    rows = [r for r in read_csv(CHECKS) if (r.get("t_start") or "").isdigit() and r.get("secs_left")]
     if not rows:
         print("no checkpoints yet")
         return
@@ -208,6 +227,8 @@ def main():
             w.writerows(new)
         results += new
     print(f"{VERSION} | {len(new)} newly settled windows | {len(results)} total")
+    with open(STATS, "w", encoding="utf-8") as f:
+        json.dump(jj_stats(rows, results), f)
     report = build_report(rows, results)
     with open(REPORT, "w", encoding="utf-8") as f:
         f.write(report + "\n")

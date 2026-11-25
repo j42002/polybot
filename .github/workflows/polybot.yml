@@ -33,6 +33,7 @@ jobs:
         run: python agent.py
         env:
           RUN_MINUTES: ${{ github.event.inputs.minutes || '55' }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
       - name: grade
         run: python grade.py
         continue-on-error: true
