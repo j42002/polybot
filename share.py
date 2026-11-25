@@ -34,8 +34,21 @@ def med(xs):
     return xs[len(xs) // 2] if xs else None
 
 
+EXP_MIN = 18                                   # experiment rows only (same rule as grade.py)
+
+
+def _exp(rs):
+    import re
+    out = []
+    for r in rs:
+        m = re.search(r"v(\d+)", str(r.get("version") or ""))
+        if m and int(m.group(1)) >= EXP_MIN:
+            out.append(r)
+    return out
+
+
 def stats():
-    t = rows(os.path.join("data", "tickets.csv"))
+    t = _exp(rows(os.path.join("data", "tickets.csv")))
     done = [r for r in t if r.get("result") in ("WIN", "LOSS", "MISSED")]
     wl = [r for r in done if r["result"] in ("WIN", "LOSS")]
     wins = sum(r["result"] == "WIN" for r in wl)
@@ -53,7 +66,7 @@ def stats():
     # calibration: favored side's model chance vs how often it won (all graded checkpoints)
     res = {r["slug"]: r.get("winner", "") for r in rows(os.path.join("data", "results.csv"))}
     bk = defaultdict(list)
-    for r in rows(os.path.join("data", "checkpoints.csv")):
+    for r in _exp(rows(os.path.join("data", "checkpoints.csv"))):
         w = res.get(r.get("slug"))
         if not w or not r.get("model_up"):
             continue
@@ -81,7 +94,7 @@ def card(s, path):
     G, R, Y, GR, WH, C = "#22c55e", "#ef4444", "#eab308", "#9ca3af", "#f3f4f6", "#1a1d27"
     now = datetime.now(ET).strftime("%b %d, %I:%M %p ET")
     d.text((60 * S, 50 * S), "polybot scoreboard", font=f(50, True), fill=WH)
-    d.text((60 * S, 118 * S), f"Polymarket US · BTC Up/Down 5 min · PAPER only · {now}", font=f(22), fill=GR)
+    d.text((60 * S, 118 * S), f"Experiment v{EXP_MIN}+ · PAPER only · {now}", font=f(22), fill=GR)
 
     def tile(x, y, w, label, value, col):
         d.rounded_rectangle([x * S, y * S, (x + w) * S, (y + 150) * S], radius=20 * S, fill=C)
@@ -142,6 +155,7 @@ def prompt(s):
     return (
         "You're the outside reviewer for my paper-trading bot on Polymarket US 'BTC Up or Down 5 min'. "
         "The bot sends at most 1 ticket per round (4:00 or 3:30 left, 6-15% edge after fees). "
+        f"Numbers are from experiment v{EXP_MIN}+ only (strategy frozen). Full report: data/report.md in github.com/j42002/polybot. "
         "Paper only until 300+ graded bets. Scoreboard (picture attached):\n"
         f"- Tickets graded {s['graded']}: won {s['wins']}, lost {s['losses']}, missed {s['missed']}\n"
         f"- Win rate {wr}, break-even incl. fee {be}, P&L after fees {s['pnl']:+.2f} at $10/ticket\n"

@@ -19,6 +19,7 @@ VERSION = "polybot grader v7"
 import csv
 import json
 import math
+import re
 import os
 import time
 from datetime import datetime, timezone
@@ -43,6 +44,24 @@ STRATS = [("mom", "Momentum (bet the last-60s direction)"),
           ("edge", "Edge (model beats the ask by 3c+)"),
           ("jj", "JJ (60-90s in, 35-70c ask, model +4c)"),
           ("safe", "SAFE (model 75%+, 55-85c ask, +4c, 3:00/2:00 left)")]
+
+
+EXP_MIN = 18                       # the experiment starts at v18: every known measurement bug fixed
+CLOSE_BANDS = (10, 25, 50)         # fixed $ distances from the target for "close round" comparisons
+
+
+def ver(r):
+    m = re.search(r"v(\d+)", str(r.get("version") or ""))
+    return int(m.group(1)) if m else 0
+
+
+def exp_only(rows):
+    return [r for r in rows if ver(r) >= EXP_MIN]
+
+
+def tickets_csv(exp=True):
+    t = read_csv(os.path.join("data", "tickets.csv"))
+    return exp_only(t) if exp else t
 
 
 def fnum(x):
@@ -168,6 +187,8 @@ def build_report(rows, results):
              f"{len({r['slug'] for r in graded})} windows settled", "",
              "PAPER ONLY. P&L is per $1 share after the taker fee; Total assumes "
              f"{SHARES} shares per bet. Breakeven = win rate needed after the fee (price + fee).", ""]
+    lines += research_lines(graded, res)
+    lines += ["---", "", "# Detail and history (ALL versions, mixed models; for context, not evidence)", ""]
     for cp in sorted({int(r["secs_left"]) for r in graded}, reverse=True):
         sub = [r for r in graded if int(r["secs_left"]) == cp]
         lines += [f"## {cp // 60}:{cp % 60:02d} left ({len(sub)} windows)", "",
@@ -222,7 +243,7 @@ def build_report(rows, results):
                          f"(set BASIS_SD near {sd:.0f})")
     best, info = fit_sigma(graded, res)
     tune = tune_lines(best, info)
-    lines += calibration_lines(graded, res) + ["", "## Model tuning", ""] + tune + forward_lines(graded, res) + funnel_lines(graded, res) + settlement_lines(res) + honest_lines() + latency_lines() + loop_lines() + team_lines()
+    lines += calibration_lines(graded, res) + ["", "## Model tuning", ""] + tune + forward_lines(graded, res) + funnel_lines(graded, res) + settlement_lines(res) + honest_lines() + latency_lines() + loop_lines() + team_lines() + legacy_lines()
     lines += ["", f"_{VERSION}_"]
     return "\n".join(lines)
 
@@ -351,8 +372,7 @@ def calibration_lines(graded, res):
 
 def latency_lines():
     """Ticket speed, measured stage by stage, and what each human reaction time would have made."""
-    rows = read_csv(os.path.join("data", "tickets.csv"))
-    rows = [r for r in rows if r.get("t_sent")]
+    rows = [r for r in tickets_csv() if r.get("t_sent")]
     if not rows:
         return ["", "## Ticket speed", "", "No v10 tickets yet."]
     med = lambda xs: sorted(xs)[len(xs) // 2] if xs else None
@@ -389,7 +409,7 @@ def latency_lines():
 
 def honest_lines():
     """Scoreboard ChatGPT asked for: P&L after fees, win rate vs break-even, drawdown, independent markets."""
-    rows = read_csv(os.path.join("data", "tickets.csv"))
+    rows = tickets_csv()
     done = [r for r in rows if r.get("result") in ("WIN", "LOSS", "MISSED")]
     out = ["", "## Honest scoreboard (tickets)", ""]
     if not done:
@@ -442,7 +462,7 @@ def forward_lines(graded, res):
 
 def funnel_lines(graded, res):
     """Research dashboard: every step from 'market observed' to 'simulated fill', kept separate."""
-    t = read_csv(os.path.join("data", "tickets.csv"))
+    t = tickets_csv()
     out = ["", "## Research dashboard (funnel)", ""]
     dec = {}
     for r in graded:
@@ -483,41 +503,140 @@ def funnel_lines(graded, res):
     return out
 
 
-def settlement_lines(res):
-    """Does our price source (Coinbase) agree with what the market actually settles on (BRTI)?
-    If Coinbase often points at the other winner near the target, part of any 'edge' is fake."""
-    closes = {r["slug"]: r for r in read_csv(os.path.join("data", "closes.csv"))}
-    out = ["", "## Settlement check (Coinbase vs the real settlement price)", ""]
-    pairs = []
+def settlement_stats(res):
+    """Coinbase last-minute average vs the venue's settlement price, experiment rounds only.
+    Counts every missing or untrusted observation instead of silently dropping it."""
+    closes = {r["slug"]: r for r in exp_only(read_csv(os.path.join("data", "closes.csv")))}
+    st = {"logged": len(closes), "invalid_sampling": 0, "not_settled": 0, "no_settle_price": 0, "pairs": []}
     for slug, c in closes.items():
+        if str(c.get("cb_valid")) != "True":
+            st["invalid_sampling"] += 1
+            continue
         r = res.get(slug)
         if not r:
+            st["not_settled"] += 1
             continue
         cb, fin, ptb = fnum(c.get("cb_avg_last60")), fnum(r.get("final_true")), fnum(r.get("ptb_true"))
         if None in (cb, fin, ptb):
+            st["no_settle_price"] += 1
             continue
-        pairs.append((cb - fin, ("Up" if cb >= ptb else "Down") != r["winner"], abs(fin - ptb)))
-    if len(pairs) < 2:
-        return out + [f"Not enough settled rounds with a logged close yet ({len(pairs)})."]
-    d = [x for x, _, _ in pairs]
+        st["pairs"].append({"gap": cb - fin, "wrong": ("Up" if cb >= ptb else "Down") != r["winner"],
+                            "dist": abs(fin - ptb)})
+    return st
+
+
+def settlement_lines(res):
+    st = settlement_stats(res)
+    p = st["pairs"]
+    out = ["", "## Settlement check (Coinbase vs the real settlement price, v%d+)" % EXP_MIN, "",
+           f"- Rounds with a logged close: {st['logged']} · valid comparisons: {len(p)}",
+           f"- Missing/untrusted: {st['invalid_sampling']} sampling gaps (>6s hole or <20 samples), "
+           f"{st['not_settled']} not settled yet, {st['no_settle_price']} without a published settlement price"]
+    if len(p) < 2:
+        return out + ["- Not enough valid comparisons yet."]
+    d = [x["gap"] for x in p]
     m = sum(d) / len(d)
     sd = math.sqrt(sum((x - m) ** 2 for x in d) / (len(d) - 1))
-    flips = [p for p in pairs if p[1]]
-    near = [p for p in pairs if p[2] < 2 * sd]
-    out += [f"- Rounds compared: {len(pairs)}",
-            f"- Coinbase last-minute average minus settlement price: bias ${m:+.2f}, typical gap ${sd:.2f}, "
-            f"worst ${max(abs(x) for x in d):.2f}",
-            f"- Coinbase would have named the WRONG winner in {len(flips)}/{len(pairs)} rounds "
-            f"({len(flips) / len(pairs):.1%})",
-            f"- Rounds that finished within ${2 * sd:.0f} of the target: {len(near)}; wrong-winner rate there: "
-            f"{sum(p[1] for p in near)}/{len(near) or 1}",
-            "- Close rounds are where our model can be most wrong for reasons that aren't about BTC at all."]
+    wrong = sum(x["wrong"] for x in p)
+    out += [f"- Coinbase minus settlement: bias ${m:+.2f}, typical gap ${sd:.2f}, worst ${max(abs(x) for x in d):.2f}",
+            f"- Coinbase would have named the wrong winner: {wrong}/{len(p)} ({wrong / len(p):.1%})"]
+    for band in CLOSE_BANDS:
+        g = [x for x in p if x["dist"] < band]
+        out.append(f"- Rounds settling within ${band} of the target: {len(g)}, wrong winner {sum(x['wrong'] for x in g)}"
+                   + (f" ({sum(x['wrong'] for x in g) / len(g):.0%})" if g else ""))
     return out
+
+
+def research_lines(graded, res):
+    """The report ChatGPT asked for, experiment rounds only (v18+). Rounds observed are NOT trades."""
+    eg = exp_only(graded)
+    t = tickets_csv()
+    out = [f"## Research report: experiment v{EXP_MIN}+ only", "",
+           "Strategy and model are frozen during this experiment. Older versions had known measurement bugs and are excluded.", ""]
+    markets = {r["slug"] for r in eg}
+    trades = [r for r in t if r.get("result") in ("WIN", "LOSS")]
+    delivered = [r for r in t if str(r.get("delivered")) == "True"]
+    out += [f"**Data:** {len(markets)} settled rounds observed · {len(t)} alerts ({len(delivered)} delivered) · "
+            f"**{len(trades)} simulated trades**. Rounds observed are not trades.", ""]
+    # 1 settlement
+    st = settlement_stats(res)
+    p = st["pairs"]
+    out.append(f"1. **Settlement disagreement:** " + (f"{sum(x['wrong'] for x in p)}/{len(p)} valid rounds "
+               f"({sum(x['wrong'] for x in p) / len(p):.1%}) where Coinbase points at the wrong winner" if p else "no valid comparisons yet")
+               + f" · missing {st['invalid_sampling'] + st['not_settled'] + st['no_settle_price']}")
+    # 2 model vs market
+    model, market = [], []
+    for r in eg:
+        y = 1.0 if res[r["slug"]]["winner"] == "Up" else 0.0
+        mu, ua, ub = fnum(r.get("model_up")), fnum(r.get("up_ask")), fnum(r.get("up_bid"))
+        if mu is not None and ua is not None:
+            model.append((mu, y))
+            market.append(((ua + ub) / 2 if ub is not None else ua, y))
+    bm, bk = brier(model), brier(market)
+    out.append("2. **Model vs market accuracy (Brier, lower is better):** " +
+               (f"model {bm:.4f} vs market {bk:.4f} on {len(markets)} rounds -> {'model' if bm < bk else 'market'} sharper"
+                if bm is not None else "no data yet"))
+    # 3 profitability after fees
+    if trades:
+        pn = [float(r.get("pnl10") or 0) for r in trades]
+        wins = sum(r["result"] == "WIN" for r in trades)
+        be = [breakeven(float(r["fill_price"]), US_FEE) for r in trades if r.get("fill_price")]
+        mean = sum(pn) / len(pn)
+        sd = math.sqrt(sum((x - mean) ** 2 for x in pn) / (len(pn) - 1)) if len(pn) > 1 else 0
+        ci = f", 95% range per trade {mean - 1.96 * sd / math.sqrt(len(pn)):+.2f} to {mean + 1.96 * sd / math.sqrt(len(pn)):+.2f}" if len(pn) > 1 else ""
+        out.append(f"3. **Simulated profit after fees:** {sum(pn):+.2f} on {len(pn)} trades of $10 · win rate {wins / len(pn):.0%} "
+                   f"vs break-even {sum(be) / len(be):.0%}{ci}")
+        eq = peak = dd = 0.0
+        for r in sorted(trades, key=lambda r: int(r["t_start"])):
+            eq += float(r.get("pnl10") or 0); peak = max(peak, eq); dd = max(dd, peak - eq)
+        dd_txt = f"-{dd:.2f}"
+    else:
+        out.append("3. **Simulated profit after fees:** no simulated trades yet")
+        dd_txt = "n/a"
+    # 4 quote availability by reaction time
+    watched = [r for r in t if r.get("status_30")]
+    if watched:
+        parts = [f"{d}s {sum(r.get(f'status_{d}') == 'FILLABLE' for r in watched)}/{len(watched)}" for d in (5, 10, 20, 30)]
+        out.append("4. **Quote available at simulated tap (size not verified):** " + " · ".join(parts))
+    else:
+        out.append("4. **Quote available at simulated tap:** no delivered alerts watched yet")
+    out.append(f"5. **Max drawdown:** {dd_txt}")
+    # 6 loop health + missing data
+    ls = exp_only(read_csv(os.path.join("data", "loop_stats.csv")))
+    ticks = sum(fnum(r.get("ticks")) or 0 for r in ls)
+    stalls = sum(fnum(r.get("stalls_5s")) or 0 for r in ls)
+    gaps = [fnum(r.get("max_spot_gap_s")) for r in ls if fnum(r.get("max_spot_gap_s")) is not None]
+    unconf = sum(r.get("status_30") == "UNCONFIRMED" for r in t)
+    out.append(f"6. **Loop health and missing data:** {len(ls)} runs, stalls over 5s {stalls:.0f}/{ticks:.0f} loops"
+               + (f", longest BTC price gap {max(gaps):.1f}s" if gaps else "")
+               + f" · bad close samples {st['invalid_sampling']} · undelivered alerts "
+               f"{sum(r.get('status') == 'UNDELIVERED' for r in t)} · unconfirmed price checks {unconf}")
+    # 7 Gemini
+    g = [r for r in t if r.get("ai_verdict") in ("AGREE", "PASS")]
+    gt = [r for r in g if r.get("result") in ("WIN", "LOSS")]
+    if not g:
+        out.append("7. **Gemini:** not enabled or no opinions yet")
+    else:
+        a = sum(float(r.get("pnl10") or 0) for r in gt if r["ai_verdict"] == "AGREE")
+        al = sum(float(r.get("pnl10") or 0) for r in gt)
+        out.append(f"7. **Gemini:** {len(g)} opinions, {len(gt)} on graded trades · AGREE-only {a:+.2f} vs all {al:+.2f}")
+    out += ["", f"Verdict rule: nothing is judged before 300 separate settled rounds with simulated trades. "
+            f"Progress: {len({r['slug'] for r in trades})}/300.", ""]
+    return out
+
+
+def legacy_lines():
+    old = [r for r in tickets_csv(exp=False) if ver(r) < EXP_MIN]
+    if not old:
+        return []
+    done = [r for r in old if r.get("result") in ("WIN", "LOSS")]
+    return ["", f"## Legacy tickets (before v{EXP_MIN}: known measurement bugs, not evidence)", "",
+            f"- {len(old)} alerts, {len(done)} counted as trades at the time, {sum(float(r.get('pnl10') or 0) for r in done):+.2f}. Excluded from every number above."]
 
 
 def loop_lines():
     """Blocking network calls stall the 2s loop; stalls make price checks and timings late."""
-    rows = read_csv(os.path.join("data", "loop_stats.csv"))
+    rows = exp_only(read_csv(os.path.join("data", "loop_stats.csv")))
     out = ["", "## Loop health (are our timings trustworthy?)", ""]
     if not rows:
         return out + ["No loop stats yet (v15+)."]
@@ -536,7 +655,7 @@ def loop_lines():
 
 def team_lines():
     """Is Gemini's second opinion worth listening to? Compare tickets it agreed with vs passed on."""
-    rows = [r for r in read_csv(os.path.join("data", "tickets.csv"))
+    rows = [r for r in tickets_csv()
             if r.get("ai_verdict") in ("AGREE", "PASS") and r.get("result") in ("WIN", "LOSS")]
     out = ["", "## Gemini second opinion", ""]
     if not rows:

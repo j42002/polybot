@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v17"
+VERSION = "polybot agent v18"
 
 import csv
 import json
@@ -55,7 +55,7 @@ TICKET_FIELDS = ["t_start", "slug", "tier", "side", "price", "ev", "sent_utc", "
                  "pnl10_5", "pnl10_10", "pnl10_20", "pnl10_30",
                  # v16: delivery proof, liquidity (unverified units), model id for forward tests
                  "delivered", "http_status", "deliver_err", "expire_stamped",
-                 "ask_size_5", "ask_size_10", "ask_size_20", "ask_size_30", "size_ok_30", "model_id"]
+                 "ask_size_5", "ask_size_10", "ask_size_20", "ask_size_30", "size_ok_30", "model_id", "version"]
 # v10 latency rules (Jacob's 6:40 recording: SAFE DOWN at 71c, 91%, sent with 2:00 left;
 # by the time the app loaded DOWN was 94-96c with 1:14 left, then BTC reversed and Up won).
 TICKET_TIERS = ("JJ",)             # SAFE tickets paused: late-window favorites move faster than a human
@@ -94,7 +94,10 @@ FIELDS = [
     "ticket_decision", "model_id", "block_price",
 ]
 CLOSES = os.path.join("data", "closes.csv")
-CLOSE_FIELDS = ["slug", "t_start", "cb_avg_last60", "cb_close", "cb_samples_last60", "logged_utc"]
+CLOSE_FIELDS = ["slug", "t_start", "cb_avg_last60", "cb_close", "cb_samples_last60", "logged_utc",
+                "cb_first_s", "cb_last_s", "cb_max_gap_s", "cb_valid", "version"]
+CLOSE_MAX_GAP = 6.0                # a last-minute average with a hole longer than this is not trusted
+CLOSE_MIN_SAMPLES = 20
 
 
 def log_close(buf, t0):
@@ -102,11 +105,20 @@ def log_close(buf, t0):
     real settlement price (CF Benchmarks BRTI, 60s average) to measure how often our price
     source would call a different winner than the one that actually settles."""
     t_end = t0 + WINDOW
-    vals = [p for ts, p in buf if t_end - 60 <= ts < t_end]
+    pts = [(ts, p) for ts, p in buf if t_end - 60 <= ts < t_end]
+    vals = [p for _, p in pts]
+    # sampling gaps: from the minute's start to the first sample, between samples, last sample to the end
+    edges = [t_end - 60] + [ts for ts, _ in pts] + [t_end]
+    max_gap = max(b - a for a, b in zip(edges, edges[1:]))
+    valid = len(vals) >= CLOSE_MIN_SAMPLES and max_gap <= CLOSE_MAX_GAP
+    near = price_near(buf, t_end)
     row = {"slug": us_slug_for(t0) if VENUE == "us" else slug_for(t0), "t_start": t0,
-           "cb_avg_last60": round(sum(vals) / len(vals), 2) if len(vals) >= 20 else "",
-           "cb_close": round(price_near(buf, t_end), 2) if price_near(buf, t_end) else "", "cb_samples_last60": len(vals),
-           "logged_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+           "cb_avg_last60": round(sum(vals) / len(vals), 2) if vals else "",
+           "cb_close": round(near, 2) if near else "", "cb_samples_last60": len(vals),
+           "logged_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+           "cb_first_s": round(pts[0][0] - (t_end - 60), 1) if pts else "",
+           "cb_last_s": round(t_end - pts[-1][0], 1) if pts else "",
+           "cb_max_gap_s": round(max_gap, 1), "cb_valid": valid, "version": VERSION}
     new = not os.path.exists(CLOSES)
     os.makedirs("data", exist_ok=True)
     with open(CLOSES, "a", newline="", encoding="utf-8") as f:
@@ -666,7 +678,8 @@ def log_ticket(row, extra=None):
             w.writeheader()
         w.writerow({"t_start": row["t_start"], "slug": row["slug"], "tier": row["tier"],
                     "side": row["jj_side"], "price": row["jj_price"], "ev": row["jj_ev"],
-                    "sent_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), **(extra or {})})
+                    "sent_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "version": VERSION,
+                    **(extra or {})})
 
 
 def pnl_10(price, won, fee_rate=None):
