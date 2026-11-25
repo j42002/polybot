@@ -1,0 +1,46 @@
+name: backtest 15m (Phase 1, exploratory)
+# Read-only historical test of the 12-minute rule on Kalshi BTC 15m. Public data, $0, paper only.
+# Separate from the 5m experiment: own concurrency group, writes only data/15m/.
+on:
+  push:
+    branches: [main]
+    paths: ["backtest15.py", ".github/workflows/backtest15.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: backtest15
+  cancel-in-progress: false
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: run backtest (resumable, 5h budget)
+        env:
+          PYTHONUNBUFFERED: "1"
+          BUDGET_MIN: "290"
+        run: python backtest15.py
+      - name: commit data/15m only
+        if: always()
+        run: |
+          git config user.name "polybot"
+          git config user.email "polybot@users.noreply.github.com"
+          rm -rf /tmp/bt && cp -r data/15m /tmp/bt
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            mkdir -p data/15m && cp /tmp/bt/* data/15m/
+            git add data/15m
+            git diff --cached --quiet && exit 0
+            git commit -q -m "backtest15 data $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push -q origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
