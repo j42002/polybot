@@ -14,7 +14,7 @@ Verdict rules are fixed in advance so the goalposts can't move:
   95% CI entirely below 0  -> LOSES
   otherwise                -> NO EDGE
 """
-VERSION = "polybot grader v5"
+VERSION = "polybot grader v6"
 
 import csv
 import json
@@ -214,6 +214,7 @@ def build_report(rows, results):
             sd = math.sqrt(sum((x - m) ** 2 for x in e) / (len(e) - 1))
             lines.append(f"- {name}: n={len(e)}, bias ${m:+.2f}, sd ${sd:.2f} "
                          f"(set BASIS_SD near {sd:.0f})")
+    lines += calibration_lines(graded, res) + latency_lines()
     lines += ["", f"_{VERSION}_"]
     return "\n".join(lines)
 
@@ -233,6 +234,55 @@ def jj_stats(rows, results, key="jj"):
         return {"n": 0}
     return {"n": s["n"], "hit": round(s["hit"], 4), "breakeven": round(s["avg_price"], 4),
             "pnl": round(s["mean"] * s["n"], 2), "verdict": s["verdict"]}
+
+
+def calibration_lines(graded, res):
+    """Is the model honest? 'When it said 85-95%, it won X%'. Uses the favored side's probability."""
+    buckets = [(0.5, 0.6), (0.6, 0.7), (0.7, 0.8), (0.8, 0.9), (0.9, 1.01)]
+    out = ["", "## Is the win chance honest? (calibration)", "",
+           "| Bot said | Rounds | Actually won |", "|---|---|---|"]
+    for lo, hi in buckets:
+        hits = n = 0
+        for r in graded:
+            mu = fnum(r.get("model_up"))
+            if mu is None:
+                continue
+            p, side = (mu, "Up") if mu >= 0.5 else (1 - mu, "Down")
+            if lo <= p < hi:
+                n += 1
+                hits += res[r["slug"]]["winner"] == side
+        if n:
+            out.append(f"| {lo:.0%}-{min(hi, 1):.0%} | {n} | {hits / n:.0%} |")
+    out.append("")
+    out.append("If 'Actually won' sits well below 'Bot said', the model is overconfident.")
+    return out
+
+
+def latency_lines():
+    """Ticket speed and whether a human could still get the price."""
+    rows = read_csv(os.path.join("data", "tickets.csv"))
+    rows = [r for r in rows if r.get("t_sent")]
+    if not rows:
+        return ["", "## Ticket speed", "", "No v10 tickets yet."]
+    med = lambda xs: sorted(xs)[len(xs) // 2] if xs else None
+    lag = [float(r["t_sent"]) - float(r["t_spot"]) for r in rows if r.get("t_spot")]
+    dms = [float(r["discord_ms"]) for r in rows if r.get("discord_ms")]
+    drift = {k: [float(r[f"ask_{k}"]) - float(r["fresh_ask"]) for r in rows
+                 if r.get(f"ask_{k}") and r.get("fresh_ask")] for k in (10, 30, 60)}
+    done = [r for r in rows if r.get("status")]
+    fill = sum(r["status"] == "FILLABLE" for r in done)
+    exp = sum(1 for r in done if r.get("expired_s"))
+    out = ["", "## Ticket speed", "", f"- Tickets: {len(rows)} ({len(done)} fully watched)"]
+    if lag:
+        out.append(f"- Price read \u2192 Discord sent: median {med(lag):.1f}s")
+    if dms:
+        out.append(f"- Discord post time: median {med(dms):.0f} ms")
+    for k, v in drift.items():
+        if v:
+            out.append(f"- Price change {k}s after ticket: median {med(v) * 100:+.1f} points")
+    if done:
+        out.append(f"- Still buyable 30s later: {fill}/{len(done)} ({fill / len(done):.0%}) \u00b7 expired: {exp}")
+    return out
 
 
 def main():

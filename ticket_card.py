@@ -88,7 +88,7 @@ def plain_english(price, fair, side="Up", secs_left=240, max_price=None):
     top = round((max_price or price) * 100)
     in10 = max(1, min(9, round(fair * 10)))
     btn = "Up" if side == "Up" else "Down"
-    return (f"DO THIS: tap {btn} now. Still a good buy up to {top}%.",
+    return (f"DO THIS: tap {btn} now, up to {top}%. Ticket expires in 30 sec.",
             f"{btn} wins if BTC ends {'above' if side == 'Up' else 'below'} the Target. We think it wins about {in10} in 10.")
 
 

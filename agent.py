@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v9"
+VERSION = "polybot agent v10"
 
 import csv
 import json
@@ -37,7 +37,18 @@ SAFE_EDGE = 0.04                   # ...and still needs 4c+ edge after the fee
 TICKET_EDGE = 0.06                 # a ticket only goes out with 6%+ edge (paper bets still log at 4%)
 TICKET_BUFFER = 0.02               # card says "still good up to" the price that leaves 2% edge
 TICKETS = os.path.join("data", "tickets.csv")
-TICKET_FIELDS = ["t_start", "slug", "tier", "side", "price", "ev", "sent_utc", "result", "pnl10", "settled_utc"]
+TICKET_FIELDS = ["t_start", "slug", "tier", "side", "price", "ev", "sent_utc", "result", "pnl10", "settled_utc",
+                 "max_price", "secs_left", "t_spot", "t_quote", "t_decide", "t_sent", "discord_ms", "msg_id",
+                 "fresh_ask", "ask_5", "ask_10", "ask_20", "ask_30", "ask_45", "ask_60",
+                 "expired_s", "fill_price", "status"]
+# v10 latency rules (Jacob's 6:40 recording: SAFE DOWN at 71c, 91%, sent with 2:00 left;
+# by the time the app loaded DOWN was 94-96c with 1:14 left, then BTC reversed and Up won).
+TICKET_TIERS = ("JJ",)             # SAFE tickets paused: late-window favorites move faster than a human
+TICKET_EDGE_MAX = 0.15             # a bigger "edge" usually means stale data or a move already underway
+HUMAN_DELAY = 30                   # paper fills use the live price 30s after the ticket, not the signal price
+WATCH_AT = (5, 10, 20, 30, 45, 60) # seconds after sending: re-read the price, expire the ticket if it ran
+CHOP_RATIO = 2.0                   # no ticket if the last 60s are 2x more volatile than the last 10 min
+WATCHERS = []
 WEBHOOK = os.getenv("DISCORD_WEBHOOK", "")
 STATS = os.path.join("data", "jj_stats.json")
 ET = ZoneInfo("America/New_York")
@@ -257,7 +268,7 @@ def get_quotes(session, mkt):
 
 # ---------- logging ----------
 
-def upgrade_header(path=DATA):
+def upgrade_header(path=DATA, fields=None):
     """If the CSV was written by an older version with fewer columns, rewrite it
     under the current header (old rows keep their values, new columns blank)."""
     if not os.path.exists(path):
@@ -266,13 +277,14 @@ def upgrade_header(path=DATA):
         rows = list(csv.DictReader(f))
         f.seek(0)
         header = next(csv.reader(f), [])
-    if header == FIELDS:
+    fields = fields or FIELDS
+    if header == fields:
         return
     with open(path, "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=FIELDS)
+        w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()
         for r in rows:
-            w.writerow({k: r.get(k) for k in FIELDS})
+            w.writerow({k: r.get(k) for k in fields})
     print(f"upgraded {path} header ({len(rows)} rows kept)")
 
 
@@ -361,28 +373,104 @@ def card_png(row, prices, stats):
 
 
 def post_ticket(session, row, prices=None):
+    """Returns (message_id, t_sent, discord_ms). message_id lets us edit the ticket to EXPIRED later."""
     if not WEBHOOK:
         print("  (no DISCORD_WEBHOOK set - ticket not sent)")
-        return
+        return None, time.time(), None
     stats = load_stats(row.get("tier", "JJ").lower())
     payload = ticket_payload(row, stats)
     try:
         png = card_png(row, prices or [], stats)
+        t_post = time.time()
         if png:
             e = payload["embeds"][0]
             e["image"] = {"url": "attachment://ticket.png"}
             e.pop("fields", None)            # the card shows the numbers
-            r = session.post(WEBHOOK, data={"payload_json": json.dumps(payload)},
+            r = session.post(WEBHOOK + "?wait=true", data={"payload_json": json.dumps(payload)},
                              files={"files[0]": ("ticket.png", png, "image/png")}, timeout=10)
         else:
-            r = session.post(WEBHOOK, json=payload, timeout=6)
-        print(f"  ticket sent to Discord ({r.status_code})")
+            r = session.post(WEBHOOK + "?wait=true", json=payload, timeout=6)
+        t_done = time.time()
+        mid = None
+        try:
+            mid = r.json().get("id")
+        except Exception:
+            pass
+        print(f"  ticket sent to Discord ({r.status_code}) in {int((t_done - t_post) * 1000)} ms")
+        return mid, t_done, int((t_done - t_post) * 1000)
     except Exception as e:
         print(f"  ticket failed: {e!r}")
+        return None, time.time(), None
 
 
-def log_ticket(row):
+def edit_ticket(session, msg_id, text):
+    """Stamp a line above an already-sent ticket (the card stays)."""
+    if not (WEBHOOK and msg_id):
+        return
+    try:
+        session.patch(f"{WEBHOOK}/messages/{msg_id}", json={"content": text}, timeout=6)
+    except Exception as e:
+        print(f"  ticket edit failed: {e!r}")
+
+
+def side_ask(session, mkt, side):
+    q = get_us_quotes(session, mkt)
+    return q.get("up_ask" if side == "Up" else "down_ask")
+
+
+def choppy(buf, now):
+    s60 = sigma_per_sec(buf, now, lookback=60, min_samples=20)
+    s600 = sigma_per_sec(buf, now)
+    return bool(s60 and s600 and s60 > CHOP_RATIO * s600)
+
+
+def update_ticket(t_start, fields):
+    if not os.path.exists(TICKETS):
+        return
+    upgrade_header(TICKETS, TICKET_FIELDS)
+    with open(TICKETS, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    for r in rows:
+        if str(r["t_start"]) == str(t_start):
+            r.update({k: v for k, v in fields.items() if k in TICKET_FIELDS})
+    with open(TICKETS, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=TICKET_FIELDS)
+        w.writeheader()
+        w.writerows(rows)
+
+
+def run_watchers(session, now):
+    """Re-read each live ticket's price at +5..60s. Expire it in Discord the moment it runs
+    past its 'good up to' price. At the end, record the paper fill at +HUMAN_DELAY seconds."""
+    for w in list(WATCHERS):
+        for sec in WATCH_AT:
+            if sec in w["asks"] or now < w["t_sent"] + sec:
+                continue
+            try:
+                ask = side_ask(session, w["mkt"], w["side"])
+            except Exception:
+                ask = None
+            w["asks"][sec] = ask
+            if w["expired_s"] is None and (ask is None or ask > w["max_price"]):
+                w["expired_s"] = sec
+                now_txt = f"{ask * 100:.0f}%" if ask else "unavailable"
+                edit_ticket(session, w["msg_id"],
+                            f"\u26d4 **EXPIRED after {sec}s** \u2014 {w['side']} is now {now_txt} "
+                            f"(limit {w['max_price'] * 100:.0f}%). Don't buy this one.")
+                print(f"  ticket {w['slug']} expired at +{sec}s (ask {ask})")
+        if len(w["asks"]) == len(WATCH_AT):
+            fill = w["asks"].get(HUMAN_DELAY)
+            ok = fill is not None and fill <= w["max_price"]
+            update_ticket(w["t_start"], {**{f"ask_{k}": v for k, v in w["asks"].items()},
+                                         "expired_s": w["expired_s"], "fill_price": fill if ok else "",
+                                         "status": "FILLABLE" if ok else "MISSED"})
+            WATCHERS.remove(w)
+
+
+def log_ticket(row, extra=None):
     os.makedirs("data", exist_ok=True)
+    if os.path.exists(TICKETS):
+        upgrade_header(TICKETS, TICKET_FIELDS)
     new = not os.path.exists(TICKETS)
     with open(TICKETS, "a", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=TICKET_FIELDS)
@@ -390,7 +478,7 @@ def log_ticket(row):
             w.writeheader()
         w.writerow({"t_start": row["t_start"], "slug": row["slug"], "tier": row["tier"],
                     "side": row["jj_side"], "price": row["jj_price"], "ev": row["jj_ev"],
-                    "sent_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
+                    "sent_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), **(extra or {})})
 
 
 def pnl_10(price, won, fee_rate=None):
@@ -420,7 +508,8 @@ def today_tally(rows):
     done = [r for r in rows if r.get("result") and
             datetime.fromtimestamp(int(r["t_start"]), ET).date() == today]
     wins = sum(r["result"] == "WIN" for r in done)
-    return wins, len(done) - wins, round(sum(float(r["pnl10"] or 0) for r in done), 2)
+    losses = sum(r["result"] == "LOSS" for r in done)
+    return wins, losses, round(sum(float(r["pnl10"] or 0) for r in done), 2)
 
 
 def check_results(session):
@@ -441,8 +530,12 @@ def check_results(session):
         if not winner:
             continue
         won = winner == r["side"]
-        r["result"] = "WIN" if won else "LOSS"
-        r["pnl10"] = pnl_10(float(r["price"]), won)
+        if r.get("status") == "MISSED":
+            r["result"], r["pnl10"] = "MISSED", 0
+        else:
+            px = float(r.get("fill_price") or r["price"])
+            r["result"] = "WIN" if won else "LOSS"
+            r["pnl10"] = pnl_10(px, won)
         r["settled_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         changed = True
         post_result(session, r, today_tally(rows))
@@ -455,15 +548,20 @@ def check_results(session):
 
 def post_result(session, r, tally):
     won = r["result"] == "WIN"
+    missed = r["result"] == "MISSED"
     t0 = datetime.fromtimestamp(int(r["t_start"]), ET)
     t1 = datetime.fromtimestamp(int(r["t_start"]) + WINDOW, ET)
     when = f"{t0.strftime('%I:%M').lstrip('0')}\u2013{t1.strftime('%I:%M %p').lstrip('0')}"
     w, l, total = tally
+    head = "\u23ed MISSED (price ran in 30s)" if missed else ("\u2705 WON" if won else "\u274c LOST")
+    px = float(r.get("fill_price") or r["price"])
+    line1 = ("No paper fill: a human tapping 30s later would have paid too much.\n" if missed else
+             f"$10 at {px * 100:.0f}% (price 30s after the ticket) \u2192 **{'+' if won else '-'}${abs(float(r['pnl10'])):.2f}**\n")
     msg = {"username": "polybot", "embeds": [{
-        "title": f"{'\u2705 WON' if won else '\u274c LOST'} \u00b7 {r['tier']} \u00b7 {r['side'].upper()} \u00b7 {when} ET",
-        "description": (f"$10 at {float(r['price']) * 100:.0f}% \u2192 **{'+' if won else '-'}${abs(float(r['pnl10'])):.2f}**\n"
+        "title": f"{head} \u00b7 {r['tier']} \u00b7 {r['side'].upper()} \u00b7 {when} ET",
+        "description": (line1 +
                         f"Today: **{w} won \u00b7 {l} lost \u00b7 {'+' if total >= 0 else '-'}${abs(total):.2f}** (paper, $10 per ticket)"),
-        "color": 0x22C55E if won else 0xEF4444,
+        "color": 0x8A91A2 if missed else (0x22C55E if won else 0xEF4444),
         "url": market_url(r["slug"]),
     }]}
     if not WEBHOOK:
@@ -500,6 +598,8 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
         return None
     then = price_near(buf, now - 60)
     mom60 = spot - then if then else None
+    t_spot = buf[-1][0]
+    t_quote = time.time()
     if us:
         q = get_us_quotes(session, us["mkt"])
     else:
@@ -538,18 +638,41 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
         jj_done.add(t0)
     if row["safe_side"]:
         jj_done.add(("safe", t0))
-    # ONE ticket per round, only the strongest, and only with a TICKET_EDGE cushion
+    # ONE ticket per round, strongest only, inside a plausible edge band, re-priced right before sending
     cands = []
-    if row["jj_side"] and row["jj_ev"] >= TICKET_EDGE:
+    if "JJ" in TICKET_TIERS and row["jj_side"] and TICKET_EDGE <= row["jj_ev"] <= TICKET_EDGE_MAX:
         cands.append(dict(row, tier="JJ"))
-    if row["safe_side"] and row["safe_ev"] >= TICKET_EDGE:
+    if "SAFE" in TICKET_TIERS and row["safe_side"] and TICKET_EDGE <= row["safe_ev"] <= TICKET_EDGE_MAX:
         cands.append(dict(row, tier="SAFE", jj_side=row["safe_side"],
                           jj_price=row["safe_price"], jj_ev=row["safe_ev"]))
+    big = max([row["jj_ev"] or 0, row["safe_ev"] or 0])
+    if big > TICKET_EDGE_MAX:
+        print(f"  edge {big:.0%} above {TICKET_EDGE_MAX:.0%} cap - treated as stale/moving, no ticket")
     if cands and ("ticket", t0) not in jj_done:
         best = max(cands, key=lambda r: r["jj_ev"])
-        jj_done.add(("ticket", t0))
-        post_ticket(session, best, recent)
-        log_ticket(best)
+        side = best["jj_side"]
+        fair = p_up if side == "Up" else 1 - p_up
+        if choppy(buf, now):
+            print("  last 60s too choppy (reversal risk) - no ticket")
+        elif us is None:
+            pass
+        else:
+            fresh = side_ask(session, us["mkt"], side)          # latest executable price
+            fresh_ev = round(fair - fresh - fee_per_share(fresh), 4) if fresh else None
+            if fresh is None or fresh_ev < TICKET_EDGE:
+                print(f"  price moved before send ({best['jj_price']} -> {fresh}) - no ticket")
+            else:
+                best.update(jj_price=fresh, jj_ev=fresh_ev)
+                max_price = round(min(fresh + fresh_ev - TICKET_BUFFER, 0.97), 2)
+                jj_done.add(("ticket", t0))
+                t_decide = time.time()
+                mid, t_sent, ms = post_ticket(session, best, recent)
+                log_ticket(best, {"max_price": max_price, "secs_left": secs_left, "t_spot": round(t_spot, 2),
+                                  "t_quote": round(t_quote, 2), "t_decide": round(t_decide, 2),
+                                  "t_sent": round(t_sent, 2), "discord_ms": ms, "msg_id": mid, "fresh_ask": fresh})
+                WATCHERS.append({"t_start": t0, "slug": best["slug"], "mkt": us["mkt"], "side": side,
+                                 "max_price": max_price, "msg_id": mid, "t_sent": t_sent,
+                                 "asks": {}, "expired_s": None})
     elif row["jj_side"] or row["safe_side"]:
         print("  signal below ticket bar or round already ticketed - logged, not sent")
     print(f"  {row['slug']} {secs_left}s left | dist {row['dist']:+} | model Up {p_up:.0%} "
@@ -583,6 +706,11 @@ def main():
                 check_results(session)
             except Exception as e:
                 print(f"  results error: {e!r}")
+        if WATCHERS:
+            try:
+                run_watchers(session, time.time())
+            except Exception as e:
+                print(f"  watcher error: {e!r}")
         if account_watch and account_watch.enabled() and tick - last_acct > 60:
             last_acct = tick
             try:
