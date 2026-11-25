@@ -13,6 +13,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+      - name: snapshot data at checkout (so saving never overwrites newer edits)
+        run: rm -rf /tmp/base && cp -r data /tmp/base
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -28,7 +30,7 @@ jobs:
           rm -rf /tmp/ours && cp -r data /tmp/ours
           for i in 1 2 3 4 5; do
             git fetch -q origin main && git reset -q --hard origin/main
-            python sync_data.py /tmp/ours data
+            python sync_data.py /tmp/ours data /tmp/base
             git add -A data/
             git diff --cached --quiet && exit 0
             git commit -q -m "scoreboard share $(date -u +%Y-%m-%dT%H:%MZ)"

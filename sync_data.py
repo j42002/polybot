@@ -5,7 +5,12 @@ data clashed with what another run had pushed, and the git rebase failed.
 Now the commit step does: copy our data aside -> reset to origin/main ->
 merge our rows in here -> commit -> push (retry from the top if main moved).
 
-Usage: python sync_data.py <our_data_dir> <repo_data_dir>
+Second bug (found 2026-11-25 by ChatGPT): a run that started before someone edited
+team_board.md pushed its OLD copy back over main ("ours wins"), erasing Claude's reply.
+Now a file this run did not change is never written back (compared to the copy taken at
+checkout), and the team board is merged entry by entry so nobody's note is lost.
+
+Usage: python sync_data.py <our_data_dir> <repo_data_dir> [<base_data_dir_at_checkout>]
 """
 import csv
 import os
@@ -17,9 +22,14 @@ KEYS = {
     "checkpoints.csv": ("slug", "secs_left", "logged_utc"),
     "results.csv": ("slug",),
     "tickets.csv": ("t_start",),
+    "loop_stats.csv": ("run_utc",),
 }
 # fingerprint lists: union of lines
 UNION_LINES = {"account_seen.txt"}
+# conversation logs: merge entries ("### <time> · <who>") from both sides
+BOARDS = {"team_board.md"}
+# written only by people (pasted ChatGPT replies): main always wins
+HUMAN = {"chatgpt_notes.md"}
 # everything else (report.md, *_stats.json, model_tune.json) is regenerated: ours wins
 
 
@@ -55,11 +65,47 @@ def merge_csv(name, ours, theirs, out):
     return len(r_o), len(r_t), len(rows)
 
 
-def main(ours_dir, repo_dir):
+def _text(p):
+    if not os.path.exists(p):
+        return None
+    with open(p, encoding="utf-8") as f:
+        return f.read()
+
+
+def merge_board(ours, theirs):
+    """Union of '### ' entries, ordered by their timestamp; header from main."""
+    def split(t):
+        parts = (t or "").split("\n### ")
+        return parts[0], ["### " + x.strip() + "\n" for x in parts[1:]]
+    head_t, ent_t = split(theirs)
+    head_o, ent_o = split(ours)
+    seen, merged = set(), []
+    for e in ent_t + ent_o:
+        k = e.strip()
+        if k not in seen:
+            seen.add(k)
+            merged.append(e)
+    merged.sort(key=lambda e: e.split("\n", 1)[0][4:21])      # "YYYY-MM-DD HH:MMZ"
+    head = (head_t if theirs is not None else head_o).rstrip() + "\n"
+    return head + "".join("\n" + e for e in merged)
+
+
+def main(ours_dir, repo_dir, base_dir=None):
     os.makedirs(repo_dir, exist_ok=True)
     for name in sorted(os.listdir(ours_dir)):
         src, dst = os.path.join(ours_dir, name), os.path.join(repo_dir, name)
-        if name in KEYS:
+        if os.path.isdir(src):
+            continue
+        if base_dir is not None and _text(src) == _text(os.path.join(base_dir, name)):
+            continue                                            # we didn't touch it: keep main's version
+        if name in HUMAN:
+            continue                                            # Jacob edits these by hand; a run never overwrites them
+        if name in BOARDS:
+            merged = merge_board(_text(src), _text(dst))       # read main's copy BEFORE opening it for writing
+            with open(dst, "w", encoding="utf-8") as f:
+                f.write(merged)
+            print(f"merged {name} entries")
+        elif name in KEYS:
             o, t, m = merge_csv(name, src, dst, dst + ".tmp")
             os.replace(dst + ".tmp", dst)
             print(f"merged {name}: ours {o} + main {t} -> {m}")
@@ -77,4 +123,4 @@ def main(ours_dir, repo_dir):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)

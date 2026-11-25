@@ -40,7 +40,8 @@ def stats():
     wl = [r for r in done if r["result"] in ("WIN", "LOSS")]
     wins = sum(r["result"] == "WIN" for r in wl)
     pnl = sum(float(r.get("pnl10") or 0) for r in done)
-    prices = [float(r.get("fill_price") or r.get("price") or 0) for r in wl if (r.get("fill_price") or r.get("price"))]
+    fee = 0.095                                              # Polymarket US taker fee coefficient
+    prices = [float(r["fill_price"]) * (1 + fee * (1 - float(r["fill_price"]))) for r in wl if r.get("fill_price")]
     lag = [float(r["t_sent"]) - float(r["t_spot"]) for r in t if r.get("t_sent") and r.get("t_spot")]
     watched = [r for r in t if r.get("status")]
     fill = sum(r["status"] == "FILLABLE" for r in watched)
@@ -93,7 +94,7 @@ def card(s, path):
     tile(390, 180, 300, "Won / Lost", f"{s['wins']} / {s['losses']}", WH)
     tile(720, 180, 300, "Missed (price ran)", f"{s['missed']}", Y)
     tile(60, 360, 300, "Win rate", f"{wr:.0%}" if wr is not None else "-", G if wr and be and wr > be else R if wr is not None else WH)
-    tile(390, 360, 300, "Needed to profit", f"{be:.0%}" if be else "-", WH)
+    tile(390, 360, 300, "Break-even (w/ fee)", f"{be:.0%}" if be else "-", WH)
     tile(720, 360, 300, "P&L ($10 a ticket)", f"{s['pnl']:+.2f}", G if s["pnl"] > 0 else R if s["pnl"] < 0 else WH)
 
     y = 550
@@ -121,7 +122,7 @@ def card(s, path):
     y += 52
     fill, watched = s["fill"]
     lines = [f"Price read → ticket in Discord: {s['lag']:.1f}s median" if s["lag"] is not None else "No timed tickets yet.",
-             f"Still buyable 30s after ticket: {fill}/{watched}" if watched else "Still buyable 30s later: no data yet"]
+             f"Quote available 30s later (simulated, size not verified): {fill}/{watched}" if watched else "Quote available 30s later: no data yet"]
     for v, (n, w, p) in s["ai"].items():
         lines.append(f"Gemini said {v}: {n} tickets, won {w} ({w / n:.0%}), {p:+.2f}")
     if not s["ai"]:
@@ -143,9 +144,9 @@ def prompt(s):
         "The bot sends at most 1 ticket per round (4:00 or 3:30 left, 6-15% edge after fees). "
         "Paper only until 300+ graded bets. Scoreboard (picture attached):\n"
         f"- Tickets graded {s['graded']}: won {s['wins']}, lost {s['losses']}, missed {s['missed']}\n"
-        f"- Win rate {wr}, needed to profit {be}, P&L {s['pnl']:+.2f} at $10/ticket\n"
+        f"- Win rate {wr}, break-even incl. fee {be}, P&L after fees {s['pnl']:+.2f} at $10/ticket\n"
         f"- Calibration: {cal}\n"
-        f"- Ticket speed: {round(s['lag'], 1) if s['lag'] is not None else 'n/a'}s; still buyable 30s later {s['fill'][0]}/{s['fill'][1]}\n"
+        f"- Ticket speed: {round(s['lag'], 1) if s['lag'] is not None else 'n/a'}s; quote available 30s later (simulated) {s['fill'][0]}/{s['fill'][1]}\n"
         f"- Gemini second opinion: {ai}\n"
         "Be skeptical. In under 120 words: 1) what looks wrong or too good to be true, "
         "2) ONE change we can test, 3) is the sample big enough to trust anything yet?"

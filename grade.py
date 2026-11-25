@@ -128,6 +128,12 @@ def bet_pnl(side, price, winner, fee_rate=None):
     return (1 - price if side == winner else -price) - fee
 
 
+def breakeven(price, fee_rate=None):
+    """Win rate needed to break even at this price AFTER the taker fee: cost per share = price + fee."""
+    fr = fee_rate if fee_rate is not None else FEE_RATE
+    return price + fr * price * (1 - price)
+
+
 def summarize(pnls, prices, wins):
     n = len(pnls)
     if n == 0:
@@ -161,7 +167,7 @@ def build_report(rows, results):
              f"{len(rows)} checkpoints logged | {len(graded)} graded | "
              f"{len({r['slug'] for r in graded})} windows settled", "",
              "PAPER ONLY. P&L is per $1 share after the taker fee; Total assumes "
-             f"{SHARES} shares per bet. Breakeven hit rate = avg price paid.", ""]
+             f"{SHARES} shares per bet. Breakeven = win rate needed after the fee (price + fee).", ""]
     for cp in sorted({int(r["secs_left"]) for r in graded}, reverse=True):
         sub = [r for r in graded if int(r["secs_left"]) == cp]
         lines += [f"## {cp // 60}:{cp % 60:02d} left ({len(sub)} windows)", "",
@@ -174,7 +180,7 @@ def build_report(rows, results):
                 pnl = bet_pnl(side, price, res[r["slug"]]["winner"], fnum(r.get("fee_rate")))
                 if pnl is not None:
                     pnls.append(pnl)
-                    prices.append(price)
+                    prices.append(breakeven(price, fnum(r.get("fee_rate"))))
                     wins += side == res[r["slug"]]["winner"]
             s = summarize(pnls, prices, wins)
             if s:
@@ -214,24 +220,24 @@ def build_report(rows, results):
             sd = math.sqrt(sum((x - m) ** 2 for x in e) / (len(e) - 1))
             lines.append(f"- {name}: n={len(e)}, bias ${m:+.2f}, sd ${sd:.2f} "
                          f"(set BASIS_SD near {sd:.0f})")
-    best, n = fit_sigma(graded, res)
-    tune = ([f"- Model volatility fitted on {n} settled checks: x{best[0]} (Brier {best[1]:.4f})"] if best
-            else [f"- Model volatility: default x1.4 until {TUNE_MIN} settled checks ({n} so far)"])
-    lines += calibration_lines(graded, res) + ["", "## Model tuning", ""] + tune + honest_lines() + latency_lines() + team_lines()
+    best, info = fit_sigma(graded, res)
+    tune = tune_lines(best, info)
+    lines += calibration_lines(graded, res) + ["", "## Model tuning", ""] + tune + honest_lines() + latency_lines() + loop_lines() + team_lines()
     lines += ["", f"_{VERSION}_"]
     return "\n".join(lines)
 
 
 def jj_stats(rows, results, key="jj"):
     res = {r["slug"]: r for r in results}
-    pnls, prices, wins = [], [], 0
-    for r in rows:
-        if r["slug"] not in res or r.get("quote_src") not in GOOD_QUOTES:
+    pnls, prices, wins, seen = [], [], 0, set()
+    for r in sorted(rows, key=lambda r: -fnum(r.get("secs_left")) if fnum(r.get("secs_left")) is not None else 0):
+        if r["slug"] not in res or r.get("quote_src") not in GOOD_QUOTES or r["slug"] in seen:
             continue
         side, price = r.get(f"{key}_side"), fnum(r.get(f"{key}_price"))
         pnl = bet_pnl(side, price, res[r["slug"]]["winner"], fnum(r.get("fee_rate")))
-        if pnl is not None:
-            pnls.append(pnl); prices.append(price); wins += side == res[r["slug"]]["winner"]
+        if pnl is not None:                                # one bet per market: checkpoints in a round aren't independent
+            seen.add(r["slug"])
+            pnls.append(pnl); prices.append(breakeven(price, fnum(r.get("fee_rate")))); wins += side == res[r["slug"]]["winner"]
     s = summarize(pnls, prices, wins)
     if not s:
         return {"n": 0}
@@ -240,37 +246,84 @@ def jj_stats(rows, results, key="jj"):
 
 
 TUNE = os.path.join("data", "model_tune.json")
-TUNE_MIN = 150                     # settled rows needed before the fit replaces the 1.4x default
+TUNE_MIN_MARKETS = 60              # train markets needed before a fit is even tried (plus half that to test)
+DEFAULT_MULT = 1.4
+US_FEE = 0.095                     # tickets are Polymarket US: feeCoefficient 0.095
+
+
+def split_markets(graded, train_frac=0.7):
+    """Chronological split BY MARKET: the oldest 70% of rounds train, the newest 30% test.
+    All checkpoints of one round stay on the same side, so nothing leaks between them."""
+    start = {}
+    for r in graded:
+        t = fnum(r.get("t_start"))
+        if t is not None:
+            start[r["slug"]] = min(t, start.get(r["slug"], t))
+    order = sorted(start, key=start.get)
+    cut = int(len(order) * train_frac)
+    return set(order[:cut]), set(order[cut:])
 
 
 def fit_sigma(graded, res):
-    """Pick the volatility multiplier that best predicts real outcomes (lowest Brier score)."""
+    """Fit the volatility multiplier on OLD markets, judge it only on NEW markets it never saw.
+    It replaces the default only if it beats the default out of sample."""
     import agent
-    rows = []
-    for r in graded:
-        spot, ptb, sig, left = fnum(r.get("spot")), fnum(r.get("ptb_proxy")), fnum(r.get("sigma")), fnum(r.get("secs_left"))
-        if None in (spot, ptb, sig, left):
-            continue
-        rows.append((spot, ptb, sig, left, 1.0 if res[r["slug"]]["winner"] == "Up" else 0.0))
-    if len(rows) < TUNE_MIN:
-        return None, len(rows)
-    best = None
-    for k in [x / 10 for x in range(8, 31)]:
-        b = sum((agent.model_p_up(sp, pt, sg, lf, mult=k, cap=0.999) - y) ** 2 for sp, pt, sg, lf, y in rows) / len(rows)
-        if best is None or b < best[1]:
-            best = (k, b)
+    train_s, test_s = split_markets(graded)
+    def rows_for(slugs):
+        out = []
+        for r in graded:
+            if r["slug"] not in slugs:
+                continue
+            spot, ptb, sig, left = fnum(r.get("spot")), fnum(r.get("ptb_proxy")), fnum(r.get("sigma")), fnum(r.get("secs_left"))
+            if None in (spot, ptb, sig, left):
+                continue
+            mid = None
+            ua, ub = fnum(r.get("up_ask")), fnum(r.get("up_bid"))
+            if ua is not None:
+                mid = (ua + ub) / 2 if ub is not None else ua
+            out.append((spot, ptb, sig, left, 1.0 if res[r["slug"]]["winner"] == "Up" else 0.0, mid))
+        return out
+    train, test = rows_for(train_s), rows_for(test_s)
+    info = {"train_markets": len(train_s), "test_markets": len(test_s), "train_rows": len(train), "test_rows": len(test)}
+    if len(train_s) < TUNE_MIN_MARKETS or len(test_s) < TUNE_MIN_MARKETS // 2:
+        with open(TUNE, "w", encoding="utf-8") as f:           # overwrite any old in-sample fit with the default
+            json.dump({"sigma_mult": DEFAULT_MULT, "adopted": False, "reason": "not enough markets", **info}, f)
+        return None, info
+    score = lambda rows, k: sum((agent.model_p_up(sp, pt, sg, lf, mult=k, cap=agent.PROB_CAP) - y) ** 2
+                                for sp, pt, sg, lf, y, _ in rows) / len(rows)
+    best_k = min((x / 10 for x in range(8, 31)), key=lambda k: score(train, k))
+    info.update(fit=best_k, test_brier_fit=round(score(test, best_k), 4),
+                test_brier_default=round(score(test, DEFAULT_MULT), 4))
+    mk = [(m, y) for *_, y, m in test if m is not None]
+    info["test_brier_market"] = round(brier(mk), 4) if mk else None
+    info["adopted"] = info["test_brier_fit"] < info["test_brier_default"]
     with open(TUNE, "w", encoding="utf-8") as f:
-        json.dump({"sigma_mult": best[0], "brier": round(best[1], 4), "n": len(rows)}, f)
-    return best, len(rows)
+        json.dump({"sigma_mult": best_k if info["adopted"] else DEFAULT_MULT, **info}, f)
+    return best_k, info
+
+
+def tune_lines(best, info):
+    out = [f"- Split by market, oldest first: train {info['train_markets']} markets ({info['train_rows']} checks), "
+           f"test {info['test_markets']} markets ({info['test_rows']} checks). Test markets are never used for fitting."]
+    if best is None:
+        out.append(f"- Not fitted yet: needs {TUNE_MIN_MARKETS} train + {TUNE_MIN_MARKETS // 2} test markets. "
+                   f"Default volatility x{DEFAULT_MULT} stays.")
+        return out
+    out.append(f"- Fitted on train: x{best}. Out-of-sample Brier (lower is better): fitted {info['test_brier_fit']}, "
+               f"default x{DEFAULT_MULT} {info['test_brier_default']}, market {info['test_brier_market']}.")
+    out.append("- " + ("Fitted value adopted: it beat the default on unseen markets." if info["adopted"]
+                       else "Fit REJECTED: it did not beat the default on unseen markets."))
+    return out
 
 
 def calibration_lines(graded, res):
     """Is the model honest? 'When it said 85-95%, it won X%'. Uses the favored side's probability."""
     buckets = [(0.5, 0.6), (0.6, 0.7), (0.7, 0.8), (0.8, 0.9), (0.9, 1.01)]
     out = ["", "## Is the win chance honest? (calibration)", "",
-           "| Bot said | Rounds | Actually won |", "|---|---|---|"]
+           "| Bot said | Checks | Separate markets | Said (avg) | Actually won |", "|---|---|---|---|---|"]
     for lo, hi in buckets:
         hits = n = 0
+        said, slugs = 0.0, set()
         for r in graded:
             mu = fnum(r.get("model_up"))
             if mu is None:
@@ -278,11 +331,15 @@ def calibration_lines(graded, res):
             p, side = (mu, "Up") if mu >= 0.5 else (1 - mu, "Down")
             if lo <= p < hi:
                 n += 1
+                said += p
+                slugs.add(r["slug"])
                 hits += res[r["slug"]]["winner"] == side
         if n:
-            out.append(f"| {lo:.0%}-{min(hi, 1):.0%} | {n} | {hits / n:.0%} |")
+            out.append(f"| {lo:.0%}-{min(hi, 1):.0%} | {n} | {len(slugs)} | {said / n:.0%} | {hits / n:.0%} |")
     out.append("")
-    out.append("If 'Actually won' sits well below 'Bot said', the model is overconfident.")
+    out.append("These are the live predictions as logged before each round settled, so they are out of sample.")
+    out.append("Checks in one market move together: trust 'Separate markets', not 'Checks'.")
+    out.append("If 'Actually won' sits well below 'Said', the model is overconfident.")
     return out
 
 
@@ -313,13 +370,14 @@ def latency_lines():
         out.append(f"- Price checks ran late by: median {med(late):.1f}s (over 3s = not trusted for a fill)")
     graded = [r for r in rows if r.get("result") in ("WIN", "LOSS", "MISSED") and r.get("status_30")]
     if graded:
-        out += ["", "| Reaction time | Could buy | Expired | Unconfirmed | Paper P&L ($10 each) |", "|---|---|---|---|---|"]
+        out += ["", "| Simulated tap after | Quote available | Expired | Unconfirmed | Paper P&L ($10 each) |", "|---|---|---|---|---|"]
         for d in (5, 10, 20, 30):
             st = [r.get(f"status_{d}") for r in graded]
             pnl = sum(float(r.get(f"pnl10_{d}") or 0) for r in graded)
             out.append(f"| {d}s | {st.count('FILLABLE')}/{len(st)} | {st.count('EXPIRED')} | "
                        f"{st.count('UNCONFIRMED')} | {pnl:+.2f} |")
-        out.append("- Only tickets a human could really have bought count. Expired or unconfirmed = no trade.")
+        out.append("- Simulated quote availability, not verified fills: size at the ask is not known yet.")
+        out.append("- Expired or unconfirmed = no trade.")
     return out
 
 
@@ -337,12 +395,33 @@ def honest_lines():
         eq += float(r.get("pnl10") or 0)
         peak = max(peak, eq)
         dd = max(dd, peak - eq)
-    be = [float(r["fill_price"]) for r in trades if r.get("fill_price")]
+    be = [breakeven(float(r["fill_price"]), US_FEE) for r in trades if r.get("fill_price")]
     out += [f"- Independent settled markets with a ticket: {len({r['slug'] for r in done})} (goal: 300)",
-            f"- Real paper trades: {len(trades)} · no-trade (expired/unconfirmed): {len(done) - len(trades)}",
+            f"- Simulated paper trades: {len(trades)} · no-trade (expired/unconfirmed): {len(done) - len(trades)}",
+            "- 'Trade' = the best ask was within the limit at the simulated tap. Liquidity (size) is not verified,",
+            "  so this is simulated quote availability, not a proven fill.",
             f"- Win rate {wins}/{len(trades)}" + (f" = {wins / len(trades):.0%}" if trades else "") +
-            (f" vs break-even {sum(be) / len(be):.0%} (average price paid, before fees)" if be else ""),
+            (f" vs break-even {sum(be) / len(be):.1%} (price paid + fee)" if be else ""),
             f"- Paper P&L after fees: {eq:+.2f} at $10 a trade · max drawdown: -{dd:.2f}"]
+    return out
+
+
+def loop_lines():
+    """Blocking network calls stall the 2s loop; stalls make price checks and timings late."""
+    rows = read_csv(os.path.join("data", "loop_stats.csv"))
+    out = ["", "## Loop health (are our timings trustworthy?)", ""]
+    if not rows:
+        return out + ["No loop stats yet (v15+)."]
+    n = lambda k: [float(r[k]) for r in rows if r.get(k) not in (None, "")]
+    ticks, stalls = sum(n("ticks")), sum(n("stalls_5s"))
+    worst = {}
+    for r in rows:
+        if r.get("worst_part"):
+            worst[r["worst_part"]] = worst.get(r["worst_part"], 0) + 1
+    out += [f"- Runs: {len(rows)} · loops: {ticks:.0f} · loops over 5s: {stalls:.0f} ({stalls / ticks:.2%})" if ticks else "",
+            f"- Worst single loop: {max(n('max_ms')) / 1000:.1f}s · longest gap between BTC prices: {max(n('max_spot_gap_s')):.1f}s",
+            f"- Most common stall cause: {max(worst, key=worst.get)}" if worst else "- No stalls recorded.",
+            "- A tick or price check during a stall is late; price checks over 3s late never count as a fill."]
     return out
 
 

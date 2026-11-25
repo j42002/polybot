@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v14"
+VERSION = "polybot agent v15"
 
 import csv
 import json
@@ -150,7 +150,10 @@ def load_tune():
     """Volatility multiplier fitted by grade.py on real settled rounds (data/model_tune.json)."""
     try:
         with open(os.path.join("data", "model_tune.json"), encoding="utf-8") as f:
-            return float(json.load(f)["sigma_mult"])
+            t = json.load(f)
+        if "test_markets" not in t:          # pre-v15 fit was in-sample on correlated checkpoints: ignore it
+            return 1.4
+        return float(t["sigma_mult"])
     except Exception:
         return 1.4
 
@@ -694,7 +697,7 @@ def post_result(session, r, tally):
     head = f"\u23ed MISSED ({why})" if missed else ("\u2705 WON" if won else "\u274c LOST")
     px = float(r.get("fill_price") or r["price"])
     line1 = ("No paper fill: it doesn't count as a trade.\n" if missed else
-             f"$10 at {px * 100:.0f}% (price 30s after the ticket) \u2192 **{'+' if won else '-'}${abs(float(r['pnl10'])):.2f}**\n")
+             f"$10 at {px * 100:.0f}% (simulated: ask 30s after the ticket, size not verified) \u2192 **{'+' if won else '-'}${abs(float(r['pnl10'])):.2f}**\n")
     msg = {"username": "polybot", "embeds": [{
         "title": f"{head} \u00b7 {r['tier']} \u00b7 {r['side'].upper()} \u00b7 {when} ET",
         "description": (line1 +
@@ -834,6 +837,72 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
     return row
 
 
+class LoopClock:
+    """Times every part of each 2s loop. The loop makes blocking network calls, so when one is
+    slow the next price read and ticket check run late. Any loop over STALL_S is logged with
+    the part that caused it, and a summary row goes to data/loop_stats.csv for grade.py."""
+    STALL_S = 5.0
+    FIELDS = ["run_utc", "version", "minutes", "ticks", "median_ms", "p95_ms", "max_ms", "stalls_5s",
+              "stall_secs", "worst_part", "part_secs", "max_spot_gap_s", "spot_fails"]
+
+    def __init__(self):
+        self.ticks, self.parts, self.stalls = [], {}, []
+        self.max_gap, self.spot_fails, self.last_spot = 0.0, 0, None
+        self.run_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def start(self):
+        self.t0 = self.last = time.time()
+        self.cur = {}
+
+    def mark(self, name):
+        now = time.time()
+        self.cur[name] = self.cur.get(name, 0.0) + now - self.last
+        self.last = now
+
+    def spot(self, ok, t):
+        if not ok:
+            self.spot_fails += 1
+            return
+        if self.last_spot:
+            self.max_gap = max(self.max_gap, t - self.last_spot)
+        self.last_spot = t
+
+    def end(self):
+        dur = time.time() - self.t0
+        self.ticks.append(dur)
+        for k, v in self.cur.items():
+            self.parts[k] = self.parts.get(k, 0.0) + v
+        if dur > self.STALL_S:
+            worst = max(self.cur, key=self.cur.get) if self.cur else "?"
+            self.stalls.append((dur, worst))
+            print(f"  STALL: loop took {dur:.1f}s (slowest part: {worst} {self.cur.get(worst, 0):.1f}s)")
+
+    def save(self):
+        if not self.ticks:
+            return
+        t = sorted(self.ticks)
+        worst = {}
+        for d, w in self.stalls:
+            worst[w] = worst.get(w, 0) + 1
+        row = {"run_utc": self.run_utc, "version": VERSION, "minutes": RUN_MINUTES, "ticks": len(t),
+               "median_ms": round(t[len(t) // 2] * 1000), "p95_ms": round(t[int(len(t) * 0.95)] * 1000),
+               "max_ms": round(t[-1] * 1000), "stalls_5s": len(self.stalls),
+               "stall_secs": round(sum(d for d, _ in self.stalls), 1),
+               "worst_part": max(worst, key=worst.get) if worst else "",
+               "part_secs": ";".join(f"{k}={v:.0f}" for k, v in sorted(self.parts.items())),
+               "max_spot_gap_s": round(self.max_gap, 1), "spot_fails": self.spot_fails}
+        path = os.path.join("data", "loop_stats.csv")
+        new = not os.path.exists(path)
+        os.makedirs("data", exist_ok=True)
+        with open(path, "a", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=self.FIELDS)
+            if new:
+                w.writeheader()
+            w.writerow(row)
+        print(f"loop: {row['ticks']} loops, median {row['median_ms']} ms, p95 {row['p95_ms']} ms, "
+              f"{row['stalls_5s']} stalls over 5s, worst part {row['worst_part'] or '-'}, max price gap {row['max_spot_gap_s']}s")
+
+
 def main():
     print(f"{VERSION} | sigma x{SIGMA_MULT} cap {PROB_CAP:.0%} | venue {VENUE} | fee {FEE_RATE} | paper only | running {RUN_MINUTES:g} min | checkpoints {CHECKPOINTS}s left")
     upgrade_header()
@@ -854,14 +923,17 @@ def main():
     if team and team.enabled():
         print(f"team: Gemini free-tier second opinions on (cap {team.DAILY_CAP}/day)")
     acct_post = lambda payload: session.post(WEBHOOK, json=payload, timeout=6) if WEBHOOK else None
+    clock = LoopClock()
     while time.time() < stop_at:
         tick = time.time()
+        clock.start()
         if tick - last_check > 20:
             last_check = tick
             try:
                 check_results(session)
             except Exception as e:
                 print(f"  results error: {e!r}")
+        clock.mark("results")
         if team:
             for op in team.drain():                               # Gemini answered: save + post under the ticket
                 update_ticket(op["t_start"], op)
@@ -871,21 +943,26 @@ def main():
                         session.post(WEBHOOK, json={"content": msg}, timeout=6)
                     except Exception:
                         pass
+        clock.mark("team")
         if WATCHERS:
             try:
                 run_watchers(session, time.time())
             except Exception as e:
                 print(f"  watcher error: {e!r}")
+        clock.mark("watchers")
         if account_watch and account_watch.enabled() and tick - last_acct > 60:
             last_acct = tick
             try:
                 account_watch.check(session, acct_post)
             except Exception as e:
                 print(f"  account watcher error: {e}")   # path + HTTP code only, no account data
+        clock.mark("account")
         p = get_spot(session)
         now = time.time()
+        clock.spot(bool(p), now)
         if p:
             buf.append((now, p))
+        clock.mark("spot")
         t0 = window_start(now)
         left = t0 + WINDOW - now
         if t0 not in opens and now - t0 >= 1:
@@ -905,6 +982,8 @@ def main():
                         rows += 1
                 except Exception as e:
                     print(f"  checkpoint error {t0} {cp}s: {e!r}")
+        clock.mark("decide")
+        clock.end()
         time.sleep(max(0.0, POLL_SEC - (time.time() - tick)))
     end = time.time() + WATCH_AT[-1] + 15                 # don't abandon a ticket mid-watch at the end of a run
     while WATCHERS and time.time() < end:
@@ -912,6 +991,7 @@ def main():
         time.sleep(POLL_SEC)
     for w in list(WATCHERS):
         finish_watcher(w)
+    clock.save()
     print(f"done | {rows} checkpoint rows logged to {DATA} | price samples {len(buf)}")
 
 
