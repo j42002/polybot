@@ -12,12 +12,13 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v13"
+VERSION = "polybot agent v14"
 
 import csv
 import json
 import math
 import os
+import re
 import time
 from collections import deque
 from datetime import datetime, timezone
@@ -45,13 +46,22 @@ TICKETS = os.path.join("data", "tickets.csv")
 TICKET_FIELDS = ["t_start", "slug", "tier", "side", "price", "ev", "sent_utc", "result", "pnl10", "settled_utc",
                  "max_price", "secs_left", "t_spot", "t_quote", "t_decide", "t_sent", "discord_ms", "msg_id",
                  "fresh_ask", "ask_5", "ask_10", "ask_20", "ask_30", "ask_45", "ask_60",
-                 "expired_s", "fill_price", "status", "ai_verdict", "ai_why", "ai_model"]
+                 "expired_s", "fill_price", "status", "ai_verdict", "ai_why", "ai_model",
+                 # v14 timing + fill audit (ChatGPT review 2026-11-25)
+                 "spot_exch_ts", "spot_lag_ms", "spot_rtt_ms", "quote_rtt_ms", "book_ts", "t_fresh", "fresh_rtt_ms",
+                 "ask_size", "secs_left_sent", "expired_why",
+                 "ask_5_at", "ask_10_at", "ask_20_at", "ask_30_at", "ask_45_at", "ask_60_at",
+                 "fill_5", "fill_10", "fill_20", "fill_30", "status_5", "status_10", "status_20", "status_30",
+                 "pnl10_5", "pnl10_10", "pnl10_20", "pnl10_30"]
 # v10 latency rules (Jacob's 6:40 recording: SAFE DOWN at 71c, 91%, sent with 2:00 left;
 # by the time the app loaded DOWN was 94-96c with 1:14 left, then BTC reversed and Up won).
 TICKET_TIERS = ("JJ",)             # SAFE tickets paused: late-window favorites move faster than a human
 TICKET_EDGE_MAX = 0.15             # a bigger "edge" usually means stale data or a move already underway
 HUMAN_DELAY = 30                   # paper fills use the live price 30s after the ticket, not the signal price
 WATCH_AT = (5, 10, 20, 30, 45, 60) # seconds after sending: re-read the price, expire the ticket if it ran
+FILL_DELAYS = (5, 10, 20, 30)      # paper fills scored at each simulated reaction time
+LATE_TOL = 3.0                     # a price check more than 3s late is not trusted for a fill
+SPOT_META = {}                     # timing of the latest Coinbase read
 CHOP_RATIO = 2.0                   # no ticket if the last 60s are 2x more volatile than the last 10 min
 WATCHERS = []
 WEBHOOK = os.getenv("DISCORD_WEBHOOK", "")
@@ -225,11 +235,24 @@ def pick_jj(p_up, q, secs_left):
 
 # ---------- network ----------
 
-def get_spot(session):
+def _iso_ts(v):
     try:
+        return datetime.fromisoformat(str(v).replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return None
+
+
+def get_spot(session):
+    """Latest BTC trade. Also keeps when we asked, when the answer arrived, and when Coinbase says
+    the trade happened, so data delay is measured, not assumed."""
+    try:
+        t_req = time.time()
         r = session.get(COINBASE, headers=HEADERS, timeout=5)
+        t_recv = time.time()
         r.raise_for_status()
-        return float(r.json()["price"])
+        d = r.json()
+        SPOT_META.update(req=t_req, recv=t_recv, exch=_iso_ts(d.get("time")))
+        return float(d["price"])
     except Exception:
         return None
 
@@ -261,20 +284,67 @@ def get_us_market(session, t0):
             "fee": float(m.get("feeCoefficient") or FEE_RATE)}
 
 
+def _num(v):
+    if isinstance(v, dict):
+        v = v.get("value")
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+_BBO_KEYS_SEEN = []
+
+
+def _note_bbo_keys(d):
+    """Print the BBO field names once per run, so we learn what timing/size data the venue gives."""
+    if not _BBO_KEYS_SEEN:
+        _BBO_KEYS_SEEN.append(sorted(d))
+        print(f"  bbo fields: {_BBO_KEYS_SEEN[0]}")
+
+
+def _book_ts(d):
+    """The venue's own update time for this quote, if it sends one."""
+    for k, v in d.items():
+        if re.search(r"time|ts$|updated", k, re.I):
+            v = v.get("value") if isinstance(v, dict) else v
+            t = _iso_ts(v) if isinstance(v, str) else _num(v)
+            if t and t > 1e12:
+                t /= 1000.0                      # ms -> s
+            if t and 1.6e9 < t < 2.2e9:
+                return round(t, 3)
+    return None
+
+
+def _size(d, side):
+    """Shares available at the best price on that side, if the venue sends it."""
+    for k, v in d.items():
+        kl = k.lower()
+        if kl.startswith(side) and re.search(r"size|qty|quantity|depth", kl):
+            return _num(v)
+    return None
+
+
 def get_us_quotes(session, mkt_slug):
     """US top of book. longQuote = price to buy Up, shortQuote = price to buy Down."""
+    t_req = time.time()
     try:
         r = session.get(f"{US_GATEWAY}/markets/{mkt_slug}/bbo", headers=HEADERS, timeout=6)
+        t_recv = time.time()
         r.raise_for_status()
         d = r.json()["marketData"]
-        val = lambda k: float(d[k]["value"]) if d.get(k) else None
+        _note_bbo_keys(d)
+        val = lambda k: _num(d.get(k))
         ua, da, ub, ba = val("longQuote"), val("shortQuote"), val("bestBid"), val("bestAsk")
         ok = lambda p: p if p is not None and 0 < p < 1 else None
         return {"quote_src": "us_bbo", "up_ask": ok(ua), "down_ask": ok(da),
-                "up_bid": ok(ub), "down_bid": ok(round(1 - ba, 4)) if ba else None}
+                "up_bid": ok(ub), "down_bid": ok(round(1 - ba, 4)) if ba else None,
+                "t_req": t_req, "t_recv": t_recv, "book_ts": _book_ts(d),
+                "up_ask_size": _size(d, "long"), "down_ask_size": _size(d, "short")}
     except Exception as e:
         print(f"  us bbo failed ({e.__class__.__name__}) - no quotes this checkpoint")
-        return {"quote_src": "error", "up_ask": None, "up_bid": None, "down_ask": None, "down_bid": None}
+        return {"quote_src": "error", "up_ask": None, "up_bid": None, "down_ask": None, "down_bid": None,
+                "t_req": t_req, "t_recv": None}
 
 
 def book_top(session, token):
@@ -472,32 +542,63 @@ def update_ticket(t_start, fields):
         w.writerows(rows)
 
 
+def fill_check(asks, at, max_price, expired_s, delay):
+    """Could a human who tapped `delay` seconds after the ticket really have bought?
+    FILLABLE only if: a price check for that moment exists, it was on time (not a stalled
+    loop reading 'now' and calling it +5s), the ask was within the limit, and the ticket had
+    not already been stamped EXPIRED in Discord at or before that moment."""
+    if expired_s is not None and expired_s <= delay:
+        return None, "EXPIRED"
+    ask, when = asks.get(delay), at.get(delay)
+    if ask is None or when is None or when - delay > LATE_TOL:
+        return None, "UNCONFIRMED"
+    if ask > max_price:
+        return None, "EXPIRED"
+    return ask, "FILLABLE"
+
+
 def run_watchers(session, now):
-    """Re-read each live ticket's price at +5..60s. Expire it in Discord the moment it runs
-    past its 'good up to' price. At the end, record the paper fill at +HUMAN_DELAY seconds."""
+    """Re-read each live ticket's price at +5..60s, recording the ACTUAL time of every check.
+    Expire it in Discord the moment it runs past its 'good up to' price. When all checks are
+    in, score paper fills at each reaction time (5/10/20/30s); the official fill is +HUMAN_DELAY."""
     for w in list(WATCHERS):
-        for sec in WATCH_AT:
-            if sec in w["asks"] or now < w["t_sent"] + sec:
-                continue
+        w.setdefault("at", {})
+        due = [sec for sec in WATCH_AT if sec not in w["asks"] and now >= w["t_sent"] + sec]
+        if len(due) > 1:                                  # loop stalled: older slots can't be measured now
+            for sec in due[:-1]:
+                w["asks"][sec], w["at"][sec] = None, None
+            due = due[-1:]
+        for sec in due:
             try:
                 ask = side_ask(session, w["mkt"], w["side"])
             except Exception:
                 ask = None
-            w["asks"][sec] = ask
+            w["asks"][sec], w["at"][sec] = ask, round(time.time() - w["t_sent"], 2)
             if w["expired_s"] is None and (ask is None or ask > w["max_price"]):
-                w["expired_s"] = sec
+                w["expired_s"], w["expired_why"] = sec, ("no_quote" if ask is None else "price")
                 now_txt = f"{ask * 100:.0f}%" if ask else "unavailable"
                 edit_ticket(session, w["msg_id"],
                             f"\u26d4 **EXPIRED after {sec}s** \u2014 {w['side']} is now {now_txt} "
                             f"(limit {w['max_price'] * 100:.0f}%). Don't buy this one.")
                 print(f"  ticket {w['slug']} expired at +{sec}s (ask {ask})")
-        if len(w["asks"]) == len(WATCH_AT):
-            fill = w["asks"].get(HUMAN_DELAY)
-            ok = fill is not None and fill <= w["max_price"]
-            update_ticket(w["t_start"], {**{f"ask_{k}": v for k, v in w["asks"].items()},
-                                         "expired_s": w["expired_s"], "fill_price": fill if ok else "",
-                                         "status": "FILLABLE" if ok else "MISSED"})
-            WATCHERS.remove(w)
+        if len(w["asks"]) == len(WATCH_AT) or now > w["t_sent"] + WATCH_AT[-1] + 30:
+            finish_watcher(w)
+
+
+def finish_watcher(w):
+    for sec in WATCH_AT:                                  # anything never checked stays unconfirmed
+        w["asks"].setdefault(sec, None)
+        w["at"].setdefault(sec, None)
+    upd = {**{f"ask_{k}": v for k, v in w["asks"].items()},
+           **{f"ask_{k}_at": v for k, v in w["at"].items()},
+           "expired_s": w["expired_s"], "expired_why": w.get("expired_why") or ""}
+    for d in FILL_DELAYS:
+        px, st = fill_check(w["asks"], w["at"], w["max_price"], w["expired_s"], d)
+        upd[f"fill_{d}"], upd[f"status_{d}"] = (px if px is not None else ""), st
+    upd["fill_price"], upd["status"] = upd[f"fill_{HUMAN_DELAY}"], upd[f"status_{HUMAN_DELAY}"]
+    update_ticket(w["t_start"], upd)
+    if w in WATCHERS:
+        WATCHERS.remove(w)
 
 
 def log_ticket(row, extra=None):
@@ -563,12 +664,15 @@ def check_results(session):
         if not winner:
             continue
         won = winner == r["side"]
-        if r.get("status") == "MISSED":
+        if r.get("status") != "FILLABLE" or not r.get("fill_price"):
+            # expired, unconfirmed, or never watched to the end: never counted as a trade
             r["result"], r["pnl10"] = "MISSED", 0
         else:
-            px = float(r.get("fill_price") or r["price"])
             r["result"] = "WIN" if won else "LOSS"
-            r["pnl10"] = pnl_10(px, won)
+            r["pnl10"] = pnl_10(float(r["fill_price"]), won)
+        for d in FILL_DELAYS:                             # what each reaction time would have made
+            f = r.get(f"fill_{d}")
+            r[f"pnl10_{d}"] = pnl_10(float(f), won) if f else 0
         r["settled_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         changed = True
         post_result(session, r, today_tally(rows))
@@ -586,9 +690,10 @@ def post_result(session, r, tally):
     t1 = datetime.fromtimestamp(int(r["t_start"]) + WINDOW, ET)
     when = f"{t0.strftime('%I:%M').lstrip('0')}\u2013{t1.strftime('%I:%M %p').lstrip('0')}"
     w, l, total = tally
-    head = "\u23ed MISSED (price ran in 30s)" if missed else ("\u2705 WON" if won else "\u274c LOST")
+    why = {"EXPIRED": "price ran past the limit", "UNCONFIRMED": "price not confirmed"}.get(r.get("status"), "not watched to the end")
+    head = f"\u23ed MISSED ({why})" if missed else ("\u2705 WON" if won else "\u274c LOST")
     px = float(r.get("fill_price") or r["price"])
-    line1 = ("No paper fill: a human tapping 30s later would have paid too much.\n" if missed else
+    line1 = ("No paper fill: it doesn't count as a trade.\n" if missed else
              f"$10 at {px * 100:.0f}% (price 30s after the ticket) \u2192 **{'+' if won else '-'}${abs(float(r['pnl10'])):.2f}**\n")
     msg = {"username": "polybot", "embeds": [{
         "title": f"{head} \u00b7 {r['tier']} \u00b7 {r['side'].upper()} \u00b7 {when} ET",
@@ -631,10 +736,12 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
         return None
     then = price_near(buf, now - 60)
     mom60 = spot - then if then else None
-    t_spot = buf[-1][0]
+    t_spot = buf[-1][0]                                   # when the latest Coinbase answer arrived
+    spot_meta = dict(SPOT_META)
     t_quote = time.time()
     if us:
         q = get_us_quotes(session, us["mkt"])
+        t_quote = q.get("t_recv") or t_quote              # when the quote ARRIVED, not when we asked
     else:
         if t0 not in markets:
             markets[t0] = get_market(session, slug_for(t0))
@@ -692,7 +799,8 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
         elif us is None:
             pass
         else:
-            fresh = side_ask(session, us["mkt"], side)          # latest executable price
+            fq = get_us_quotes(session, us["mkt"])               # latest executable price, timed
+            fresh = fq.get("up_ask" if side == "Up" else "down_ask")
             fresh_ev = round(fair - fresh - fee_per_share(fresh), 4) if fresh else None
             if fresh is None or fresh_ev < TICKET_EDGE:
                 print(f"  price moved before send ({best['jj_price']} -> {fresh}) - no ticket")
@@ -702,14 +810,23 @@ def decide(session, buf, t0, secs_left, opens, markets, now, jj_done=None):
                 jj_done.add(("ticket", t0))
                 t_decide = time.time()
                 mid, t_sent, ms = post_ticket(session, best, recent)
-                log_ticket(best, {"max_price": max_price, "secs_left": secs_left, "t_spot": round(t_spot, 2),
-                                  "t_quote": round(t_quote, 2), "t_decide": round(t_decide, 2),
-                                  "t_sent": round(t_sent, 2), "discord_ms": ms, "msg_id": mid, "fresh_ask": fresh})
+                ms_ = lambda a, b: round((a - b) * 1000) if a and b else ""
+                log_ticket(best, {"max_price": max_price, "secs_left": secs_left, "t_spot": round(t_spot, 3),
+                                  "t_quote": round(t_quote, 3), "t_decide": round(t_decide, 3),
+                                  "t_sent": round(t_sent, 3), "discord_ms": ms, "msg_id": mid, "fresh_ask": fresh,
+                                  "spot_exch_ts": round(spot_meta["exch"], 3) if spot_meta.get("exch") else "",
+                                  "spot_lag_ms": ms_(spot_meta.get("recv"), spot_meta.get("exch")),
+                                  "spot_rtt_ms": ms_(spot_meta.get("recv"), spot_meta.get("req")),
+                                  "quote_rtt_ms": ms_(q.get("t_recv"), q.get("t_req")),
+                                  "book_ts": fq.get("book_ts") or "", "t_fresh": round(fq["t_recv"], 3),
+                                  "fresh_rtt_ms": ms_(fq.get("t_recv"), fq.get("t_req")),
+                                  "ask_size": fq.get("up_ask_size" if side == "Up" else "down_ask_size") or "",
+                                  "secs_left_sent": round(t0 + WINDOW - t_sent, 1)})
                 if team:
                     team.second_opinion(t0, best, secs_left, recent)      # background: never delays the ticket
                 WATCHERS.append({"t_start": t0, "slug": best["slug"], "mkt": us["mkt"], "side": side,
                                  "max_price": max_price, "msg_id": mid, "t_sent": t_sent,
-                                 "asks": {}, "expired_s": None})
+                                 "asks": {}, "at": {}, "expired_s": None})
     elif row["jj_side"] or row["safe_side"]:
         print("  signal below ticket bar or round already ticketed - logged, not sent")
     print(f"  {row['slug']} {secs_left}s left | dist {row['dist']:+} | model Up {p_up:.0%} "
@@ -789,6 +906,12 @@ def main():
                 except Exception as e:
                     print(f"  checkpoint error {t0} {cp}s: {e!r}")
         time.sleep(max(0.0, POLL_SEC - (time.time() - tick)))
+    end = time.time() + WATCH_AT[-1] + 15                 # don't abandon a ticket mid-watch at the end of a run
+    while WATCHERS and time.time() < end:
+        run_watchers(session, time.time())
+        time.sleep(POLL_SEC)
+    for w in list(WATCHERS):
+        finish_watcher(w)
     print(f"done | {rows} checkpoint rows logged to {DATA} | price samples {len(buf)}")
 
 

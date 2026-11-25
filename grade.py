@@ -217,7 +217,7 @@ def build_report(rows, results):
     best, n = fit_sigma(graded, res)
     tune = ([f"- Model volatility fitted on {n} settled checks: x{best[0]} (Brier {best[1]:.4f})"] if best
             else [f"- Model volatility: default x1.4 until {TUNE_MIN} settled checks ({n} so far)"])
-    lines += calibration_lines(graded, res) + ["", "## Model tuning", ""] + tune + latency_lines() + team_lines()
+    lines += calibration_lines(graded, res) + ["", "## Model tuning", ""] + tune + honest_lines() + latency_lines() + team_lines()
     lines += ["", f"_{VERSION}_"]
     return "\n".join(lines)
 
@@ -287,29 +287,62 @@ def calibration_lines(graded, res):
 
 
 def latency_lines():
-    """Ticket speed and whether a human could still get the price."""
+    """Ticket speed, measured stage by stage, and what each human reaction time would have made."""
     rows = read_csv(os.path.join("data", "tickets.csv"))
     rows = [r for r in rows if r.get("t_sent")]
     if not rows:
         return ["", "## Ticket speed", "", "No v10 tickets yet."]
     med = lambda xs: sorted(xs)[len(xs) // 2] if xs else None
-    lag = [float(r["t_sent"]) - float(r["t_spot"]) for r in rows if r.get("t_spot")]
-    dms = [float(r["discord_ms"]) for r in rows if r.get("discord_ms")]
-    drift = {k: [float(r[f"ask_{k}"]) - float(r["fresh_ask"]) for r in rows
-                 if r.get(f"ask_{k}") and r.get("fresh_ask")] for k in (10, 30, 60)}
-    done = [r for r in rows if r.get("status")]
-    fill = sum(r["status"] == "FILLABLE" for r in done)
-    exp = sum(1 for r in done if r.get("expired_s"))
-    out = ["", "## Ticket speed", "", f"- Tickets: {len(rows)} ({len(done)} fully watched)"]
-    if lag:
-        out.append(f"- Price read \u2192 Discord sent: median {med(lag):.1f}s")
-    if dms:
-        out.append(f"- Discord post time: median {med(dms):.0f} ms")
-    for k, v in drift.items():
-        if v:
-            out.append(f"- Price change {k}s after ticket: median {med(v) * 100:+.1f} points")
-    if done:
-        out.append(f"- Still buyable 30s later: {fill}/{len(done)} ({fill / len(done):.0%}) \u00b7 expired: {exp}")
+    num = lambda r, k: float(r[k]) if r.get(k) not in (None, "") else None
+    col = lambda k: [v for v in (num(r, k) for r in rows) if v is not None]
+    stage = lambda a, b: [num(r, b) - num(r, a) for r in rows if num(r, a) and num(r, b)]
+    out = ["", "## Ticket speed (measured, not assumed)", "", f"- Tickets: {len(rows)}"]
+    for label, xs, unit in (
+            ("Coinbase trade -> we received it", col("spot_lag_ms"), "ms"),
+            ("Coinbase request round trip", col("spot_rtt_ms"), "ms"),
+            ("Polymarket quote round trip", col("quote_rtt_ms"), "ms"),
+            ("Price read -> decision made", [x * 1000 for x in stage("t_spot", "t_decide")], "ms"),
+            ("Decision -> Discord accepted", [x * 1000 for x in stage("t_decide", "t_sent")], "ms")):
+        if xs:
+            out.append(f"- {label}: median {med(xs):.0f} {unit} (worst {max(xs):.0f})")
+    left = col("secs_left_sent")
+    if left:
+        out.append(f"- Time left on the timer when sent: median {med(left):.0f}s")
+    late = [num(r, f"ask_{k}_at") - k for r in rows for k in (5, 10, 20, 30) if num(r, f"ask_{k}_at") is not None]
+    if late:
+        out.append(f"- Price checks ran late by: median {med(late):.1f}s (over 3s = not trusted for a fill)")
+    graded = [r for r in rows if r.get("result") in ("WIN", "LOSS", "MISSED") and r.get("status_30")]
+    if graded:
+        out += ["", "| Reaction time | Could buy | Expired | Unconfirmed | Paper P&L ($10 each) |", "|---|---|---|---|---|"]
+        for d in (5, 10, 20, 30):
+            st = [r.get(f"status_{d}") for r in graded]
+            pnl = sum(float(r.get(f"pnl10_{d}") or 0) for r in graded)
+            out.append(f"| {d}s | {st.count('FILLABLE')}/{len(st)} | {st.count('EXPIRED')} | "
+                       f"{st.count('UNCONFIRMED')} | {pnl:+.2f} |")
+        out.append("- Only tickets a human could really have bought count. Expired or unconfirmed = no trade.")
+    return out
+
+
+def honest_lines():
+    """Scoreboard ChatGPT asked for: P&L after fees, win rate vs break-even, drawdown, independent markets."""
+    rows = read_csv(os.path.join("data", "tickets.csv"))
+    done = [r for r in rows if r.get("result") in ("WIN", "LOSS", "MISSED")]
+    out = ["", "## Honest scoreboard (tickets)", ""]
+    if not done:
+        return out + ["No settled tickets yet."]
+    trades = [r for r in done if r["result"] in ("WIN", "LOSS")]
+    wins = sum(r["result"] == "WIN" for r in trades)
+    eq = peak = dd = 0.0
+    for r in sorted(trades, key=lambda r: int(r["t_start"])):
+        eq += float(r.get("pnl10") or 0)
+        peak = max(peak, eq)
+        dd = max(dd, peak - eq)
+    be = [float(r["fill_price"]) for r in trades if r.get("fill_price")]
+    out += [f"- Independent settled markets with a ticket: {len({r['slug'] for r in done})} (goal: 300)",
+            f"- Real paper trades: {len(trades)} · no-trade (expired/unconfirmed): {len(done) - len(trades)}",
+            f"- Win rate {wins}/{len(trades)}" + (f" = {wins / len(trades):.0%}" if trades else "") +
+            (f" vs break-even {sum(be) / len(be):.0%} (average price paid, before fees)" if be else ""),
+            f"- Paper P&L after fees: {eq:+.2f} at $10 a trade · max drawdown: -{dd:.2f}"]
     return out
 
 
