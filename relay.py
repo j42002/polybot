@@ -32,7 +32,10 @@ import requests
 API = "https://api.github.com"
 REPO = os.getenv("GITHUB_REPOSITORY", "j42002/polybot")
 TOKEN = os.getenv("GITHUB_TOKEN", "")
-WEBHOOK = os.getenv("DISCORD_WEBHOOK", "")
+# Team chat and reports have their OWN webhooks. The ticket webhook (DISCORD_WEBHOOK, #polybot) is never used here:
+# if a team webhook is missing, the message waits in the queue and the run says so. It never leaks into #polybot.
+TEAM_WEBHOOK = os.getenv("DISCORD_TEAM_WEBHOOK", "")
+RESEARCH_WEBHOOK = os.getenv("DISCORD_RESEARCH_WEBHOOK", "")
 STATE = os.path.join("lab", "relay_state.json")
 OUTBOX = os.path.join("lab", "outbox")
 CLAUDE_DAILY_MAX = 8
@@ -62,7 +65,7 @@ def load_state():
             s = json.load(f)
     except Exception:
         s = {}
-    for k, v in (("notified", []), ("answered", {}), ("sent", []), ("posted", [])):
+    for k, v in (("notified", []), ("answered", {}), ("sent", []), ("posted", []), ("commented", {}), ("discord_sent", [])):
         s.setdefault(k, v)
     return s
 
@@ -109,13 +112,26 @@ def excerpt(body, n=420):
     return head, (rest[:n] + ("…" if len(rest) > n else ""))
 
 
-def discord(payload, session=None):
-    if not WEBHOOK:
-        print("relay: no DISCORD_WEBHOOK, skipped Discord")
+def discord(payload, session=None, channel="team", username=None):
+    """True only if Discord accepted the message (2xx). channel: 'team' -> #ai-team-chat,
+    'research' -> #research-reports (falls back to the team channel, never to #polybot)."""
+    hook = (RESEARCH_WEBHOOK or TEAM_WEBHOOK) if channel == "research" else TEAM_WEBHOOK
+    if not hook:
+        print(f"relay: no DISCORD_TEAM_WEBHOOK{' / DISCORD_RESEARCH_WEBHOOK' if channel == 'research' else ''} secret: "
+              "message kept in the queue (not sent anywhere)")
         return False
+    if username:
+        payload = {**payload, "username": username}
     s = session or requests
-    r = s.post(WEBHOOK, json=payload, timeout=10)
-    return 200 <= r.status_code < 300
+    try:
+        r = s.post(hook, json=payload, timeout=10)
+    except requests.RequestException as e:
+        print(f"relay: Discord request failed ({e.__class__.__name__}), will retry next run")
+        return False
+    if not 200 <= r.status_code < 300:
+        print(f"relay: Discord answered HTTP {r.status_code}, will retry next run")
+        return False
+    return True
 
 
 # ---------- inbound: announce new ChatGPT comments once ----------
@@ -131,8 +147,9 @@ def inbound(session=None):
             "title": f"📥 ChatGPT posted on #{issue_num(c)}"[:250],
             "description": f"**{head}**\n{text}"[:3900] if head else text[:3900],
             "url": c["html_url"], "color": 0x10A37F,
-            "footer": {"text": "Claude replies on GitHub within ~3 hours · paper only · $0"}}]}, session)
-        if ok or not WEBHOOK:
+            "footer": {"text": "Claude replies on GitHub within ~3 hours · paper only · $0"}}]}, session,
+            channel="team", username="ChatGPT (research director)")
+        if ok:                                         # only a delivered announcement counts; otherwise retry next run
             st["notified"].append(str(c["id"]))
             n += 1
     save_state(st)
@@ -208,6 +225,8 @@ def summary_embed(o):
 
 
 def outbound(session=None):
+    """Two stages per outbox item, each recorded on its own so a failure never repeats the other:
+    1) GitHub comment (posted once; its URL is remembered)  2) Discord card (retried until Discord accepts it)."""
     st = load_state()
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     done = 0
@@ -216,32 +235,39 @@ def outbound(session=None):
         if oid in st["sent"]:
             continue
         kind = o.get("kind", "comment+discord")
-        if "comment" in kind:
+        if "comment" in kind and oid not in st["commented"]:
             rt = str(o.get("reply_to") or "")
             if rt and rt in st["answered"]:
-                print(f"relay: {oid} skipped, comment {rt} already answered")
-                st["sent"].append(oid)
+                print(f"relay: {oid}: comment {rt} already answered, no second comment")
+                st["commented"][oid] = "skipped-duplicate"
+            else:
+                posted_today = [p for p in st["posted"] if p.startswith(today)]
+                if len(posted_today) >= CLAUDE_DAILY_MAX:
+                    print(f"relay: daily cap reached, {oid} waits")
+                    continue
+                body = o["body"]
+                if not CLAUDE_RE.search(body):
+                    body = "## Claude → ChatGPT\n\n" + body
+                body += "\n\n_Posted by the team relay for Claude (lead developer). Paper only, $0. Major decisions wait for Jacob._"
+                r = gh("POST", f"/issues/{o['issue']}/comments", session, json={"body": body})
+                st["commented"][oid] = r.json().get("html_url")
+                if rt:
+                    st["answered"][rt] = r.json().get("id")
+                st["posted"].append(f"{today} {oid}")
+            save_state(st)
+        if "discord" in kind or "report" in kind:
+            o["_url"] = st["commented"].get(oid) if str(st["commented"].get(oid, "")).startswith("http") else None
+            channel = "research" if "report" in kind else "team"
+            user = (o.get("discord") or {}).get("username") or ("Claude (lead developer)" if channel == "team" else "Polybot HQ")
+            if not discord({"embeds": [summary_embed(o)]}, session, channel=channel, username=user):
+                print(f"relay: {oid}: Discord not delivered yet, stays queued")
                 continue
-            posted_today = [p for p in st["posted"] if p.startswith(today)]
-            if len(posted_today) >= CLAUDE_DAILY_MAX:
-                print(f"relay: daily cap reached, {oid} waits")
-                continue
-            body = o["body"]
-            if not CLAUDE_RE.search(body):
-                body = "## Claude → ChatGPT\n\n" + body
-            body += "\n\n_Posted by the team relay for Claude (lead developer). Paper only, $0. Major decisions wait for Jacob._"
-            r = gh("POST", f"/issues/{o['issue']}/comments", session, json={"body": body})
-            o["_url"] = r.json().get("html_url")
-            if rt:
-                st["answered"][rt] = r.json().get("id")
-            st["posted"].append(f"{today} {oid}")
-        if "discord" in kind:
-            discord({"embeds": [summary_embed(o)]}, session)
+            st["discord_sent"].append(oid)
         st["sent"].append(oid)
         save_state(st)                                 # after every item: a later failure can't cause a repeat
         done += 1
     save_state(st)
-    print(f"relay outbound: {done} item(s) sent")
+    print(f"relay outbound: {done} item(s) fully delivered")
     return done
 
 

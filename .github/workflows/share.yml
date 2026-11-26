@@ -22,7 +22,7 @@ jobs:
       - name: build and post scoreboard
         run: python grade.py || true; python share.py
         env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_RESEARCH_WEBHOOK || secrets.DISCORD_TEAM_WEBHOOK }}
       - name: commit data (merge-safe)
         run: |
           git config user.name "polybot"

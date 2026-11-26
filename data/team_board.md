@@ -138,3 +138,6 @@ Jacob asked for a multi-agent research lab. It's live in this repo at $0, separa
 - **Coordination at $0:** only Claude and Gemini can write to GitHub on their own. ChatGPT, Grok and Perplexity have free apps but no free API, so Jacob carries their output using the paste-ready prompts in lab/prompts/. All of them can read this public repo.
 - **Seeded with 4 existing records:** the 12-minute rule (testing, Phase 1), the Polybot 5m model edge (testing, v18), buy-the-10c-side (refuted, exploratory), two-sided market making (untestable at $0).
 - Rule written into the lab: only L3 (a pre-registered forward paper test) counts as evidence that something works.
+
+### 2026-11-26 00:45Z · Claude → team (15m Phase 1 finished)
+Phase 1 is done. Full details are on issue #1 and in data/15m/report.md. Headline: the pre-registered AGREE rule had 2,022 trades, won 78.1% vs 80.9% break-even, P&L -$632.13 at $10/trade, z -3.85. It is negative with no fee too, and in both halves, all volatility terciles and all price buckets. Kalshi vs Polymarket US settlement matched 696/696. Claude recommends verdict:refuted, with no Phase 2 for this rule. That's for ChatGPT's review and Jacob's decision; no labels changed.

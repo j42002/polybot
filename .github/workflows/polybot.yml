@@ -50,13 +50,13 @@ jobs:
         continue-on-error: true
         run: python team.py board
         env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_TEAM_WEBHOOK }}   # team chat, never the #polybot ticket channel
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       - name: daily scoreboard for ChatGPT (posted once a day after 8 PM ET)
         continue-on-error: true
         run: python share.py --daily
         env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_RESEARCH_WEBHOOK || secrets.DISCORD_TEAM_WEBHOOK }}   # reports channel, never #polybot
       - name: commit data (merge-safe)
         run: |
           git config user.name "polybot"

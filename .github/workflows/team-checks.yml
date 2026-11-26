@@ -1,0 +1,49 @@
+name: team checks
+# Data Auditor, Quant Analyst, Risk Sentinel: free deterministic checks, read-only, $0.
+# Posts to #research-reports (or #ai-team-chat), never #polybot. Writes only lab/checks/.
+on:
+  schedule:
+    - cron: "11 1 * * *"
+  push:
+    branches: [main]
+    paths: ["team_checks.py", ".github/workflows/team-checks.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: team-checks
+  cancel-in-progress: false
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests==2.32.3
+      - name: run checks
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISCORD_TEAM_WEBHOOK: ${{ secrets.DISCORD_TEAM_WEBHOOK }}
+          DISCORD_RESEARCH_WEBHOOK: ${{ secrets.DISCORD_RESEARCH_WEBHOOK }}
+        run: python team_checks.py
+      - name: commit lab/checks only
+        run: |
+          git config user.name "polybot-checks"
+          git config user.email "polybot@users.noreply.github.com"
+          cp lab/checks/latest.md /tmp/latest.md
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            mkdir -p lab/checks && cp /tmp/latest.md lab/checks/latest.md
+            git add lab/checks/latest.md
+            git diff --cached --quiet && exit 0
+            git commit -q -m "team checks $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push -q origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1

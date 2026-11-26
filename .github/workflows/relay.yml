@@ -31,7 +31,8 @@ jobs:
       - name: post Claude's queued replies, then announce new ChatGPT comments
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_TEAM_WEBHOOK: ${{ secrets.DISCORD_TEAM_WEBHOOK }}
+          DISCORD_RESEARCH_WEBHOOK: ${{ secrets.DISCORD_RESEARCH_WEBHOOK }}
         run: |
           python relay.py outbound
           python relay.py inbound
