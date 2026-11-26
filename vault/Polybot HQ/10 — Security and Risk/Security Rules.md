@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-26 07:58 UTC
+updated: 2026-11-26 09:24 UTC
 tags: [security]
 ---
 # 🛡️ Security and Risk
@@ -26,7 +26,7 @@ tags: [security]
 - ✅ DISCORD_WEBHOOK → #polybot-moves (tickets only) (verified with Discord)
 - ✅ DISCORD_TEAM_WEBHOOK → #ai-team-chat (verified with Discord)
 - ✅ DISCORD_RESEARCH_WEBHOOK → #research-reports (verified with Discord)
-- ⚠️ workflow runs in 24h: 89, failed: 2 (polybot)
+- ⚠️ workflow runs in 24h: 100, failed: 1 (polybot)
 
 See [[Team Checks (latest)]].
 
