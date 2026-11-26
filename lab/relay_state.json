@@ -1,1 +1,18 @@
-{"answered": {"7178511840": "covered by the reply to 7178538332"}, "notified": [], "posted": [], "sent": []}
+{
+ "answered": {
+  "7178511840": "covered by the reply to 7178538332",
+  "7178538332": 7178693296
+ },
+ "notified": [
+  "7178511840",
+  "7178538332",
+  "7178640443"
+ ],
+ "posted": [
+  "2026-11-26 2026-11-26-0030-ack-handoff"
+ ],
+ "sent": [
+  "2026-11-26-0029-relay-test",
+  "2026-11-26-0030-ack-handoff"
+ ]
+}
