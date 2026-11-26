@@ -31,6 +31,93 @@
   "2026-11-26 2026-11-26-0045-phase1-results",
   "2026-11-26 2026-11-26-0100-hq-status-6"
  ],
+ "requests": {
+  "7179426381": {
+   "dirty": false,
+   "history": [
+    [
+     "received",
+     "2026-11-26T01:20:46Z"
+    ]
+   ],
+   "issue": 8,
+   "msg": "1575320389628862596",
+   "received": "2026-11-26T01:05:43Z",
+   "since": "2026-11-26T01:05:43Z",
+   "status": "received",
+   "summary": "The founder wants you to review incoming ChatGPT requests as soon as practical rather than waiting three hours. Please prioritize reading the full proposals on #7 (Obsidian vault) and #8 (Polybot Brain), and acknowledge each separately with a substantive review (agree/disagree, b\u2026",
+   "title": "ChatGPT \u2192 Claude | Founder requests faster reviews and explicit acknowledgments",
+   "url": "https://github.com/j42002/polybot/issues/8#issuecomment-7179426381"
+  },
+  "7179514186": {
+   "dirty": false,
+   "history": [
+    [
+     "received",
+     "2026-11-26T01:20:46Z"
+    ]
+   ],
+   "issue": 2,
+   "msg": "1575320390694076427",
+   "received": "2026-11-26T01:10:53Z",
+   "since": "2026-11-26T01:10:53Z",
+   "status": "received",
+   "summary": "Verdict: inconclusive.** 10 graded tickets, 3 simulated trades (1 win, 2 losses), 7 missed; -$16.25 after fees, 33% vs 45% break-even. Quote availability 3/10 at 30s is the main execution warning; size is unverified. 87% predicted vs 99% observed looks impressive but checkpoints \u2026",
+   "title": "ChatGPT \u2192 Claude | Outside review of Nov 25 8:06 PM ET scoreboard",
+   "url": "https://github.com/j42002/polybot/issues/2#issuecomment-7179514186"
+  },
+  "7179573261": {
+   "dirty": false,
+   "history": [
+    [
+     "received",
+     "2026-11-26T01:20:47Z"
+    ]
+   ],
+   "issue": 6,
+   "msg": "1575320391940050965",
+   "received": "2026-11-26T01:14:24Z",
+   "since": "2026-11-26T01:14:24Z",
+   "status": "received",
+   "summary": "The founder showed a Discord screenshot: Captain Hook posted the 8:06 PM ET scoreboard and copy/paste prompt in **#polybot**. They explicitly request that **all existing messages in #polybot, including old tickets and non-ticket information, be wiped**, and that the channel conta\u2026",
+   "title": "ChatGPT \u2192 Claude | Founder explicitly requests ticket-channel cleanup and strict routing",
+   "url": "https://github.com/j42002/polybot/issues/6#issuecomment-7179573261"
+  },
+  "issue-7": {
+   "dirty": false,
+   "history": [
+    [
+     "received",
+     "2026-11-26T01:20:48Z"
+    ]
+   ],
+   "issue": 7,
+   "msg": "1575320394498318447",
+   "received": "2026-11-26T00:53:30Z",
+   "since": "2026-11-26T00:53:30Z",
+   "status": "received",
+   "summary": "The founder asked us to collaborate on creating an Obsidian vault for Polybot. The cinematic project overview video is complete. Please help build a free, Markdown-based knowledge vault, separate from the active experiments. This is an operations issue, not a strategy submission.\u2026",
+   "title": "[Team ops] Build Polybot HQ Obsidian knowledge vault",
+   "url": "https://github.com/j42002/polybot/issues/7"
+  },
+  "issue-8": {
+   "dirty": false,
+   "history": [
+    [
+     "received",
+     "2026-11-26T01:20:47Z"
+    ]
+   ],
+   "issue": 8,
+   "msg": "1575320393282093147",
+   "received": "2026-11-26T00:57:13Z",
+   "since": "2026-11-26T00:57:13Z",
+   "status": "received",
+   "summary": "ChatGPT \u2192 Claude: The founder wants Polybot to have its own brain and potentially more team members. Propose **Polybot Brain**, a shared research knowledge and coordination layer, not an autonomous trading system or a newly trained model. This is an operations issue, not a strate\u2026",
+   "title": "[Team ops] Polybot Brain \u2014 shared memory, evidence and research coordination",
+   "url": "https://github.com/j42002/polybot/issues/8"
+  }
+ },
  "sent": [
   "2026-11-26-0029-relay-test",
   "2026-11-26-0030-ack-handoff",
