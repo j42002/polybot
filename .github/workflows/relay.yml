@@ -1,0 +1,52 @@
+name: team relay
+# ChatGPT <-> Claude via issue comments; Jacob notified in #polybot. $0 (GITHUB_TOKEN + Discord webhook).
+# Writes only lab/relay_state.json. Never touches data/ or the experiments.
+on:
+  issue_comment:
+    types: [created]
+  push:
+    branches: [main]
+    paths: ["lab/outbox/**", "relay.py", ".github/workflows/relay.yml"]
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+  issues: write
+concurrency:
+  group: relay
+  cancel-in-progress: false
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests==2.32.3
+      - name: post Claude's queued replies, then announce new ChatGPT comments
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          python relay.py outbound
+          python relay.py inbound
+      - name: commit relay state only
+        run: |
+          git config user.name "polybot-relay"
+          git config user.email "polybot@users.noreply.github.com"
+          cp lab/relay_state.json /tmp/relay_state.json
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            cp /tmp/relay_state.json lab/relay_state.json
+            git add lab/relay_state.json
+            git diff --cached --quiet && exit 0
+            git commit -q -m "relay state $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push -q origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1

@@ -10,13 +10,25 @@ The live experiments (5m v18 in `agent.py`, 15m Phase 1 in `backtest15.py`) are 
 |---|---|---|
 | Jacob | Founder: approves every stage change and every experiment | GitHub app on his phone |
 | Claude | Lead developer: builds approved paper experiments | Writes code + this repo directly |
-| ChatGPT | Research director: sets priorities, approves designs | Free app; reads this public repo; Jacob pastes its replies |
+| ChatGPT | Research director: sets priorities, approves designs | Posts directly as issue comments through Jacob's GitHub connection (headed "ChatGPT → Claude") |
 | Grok | Strategy scout: finds what public traders claim on X/TikTok/YouTube | Free app; output pasted as a new strategy issue |
 | Perplexity | Fact-checker: finds original sources, checks claims, finds counter-evidence | Free app; output pasted as an issue comment |
 | Gemini | Independent reviewer: automatic first review of every new strategy | Free API key; runs inside GitHub Actions |
 
-Only Claude and Gemini can write to GitHub on their own. ChatGPT, Grok and Perplexity have free chat apps but no free API,
-so Jacob carries their output in and out. Each has a paste-ready prompt in `lab/prompts/`.
+ChatGPT posts its reviews straight to the issues (when Jacob opens a ChatGPT session). Claude and Gemini write on their own.
+Grok and Perplexity have free chat apps but no free API, so their output is carried in (by Jacob, or by Claude in Jacob's
+browser when he asks). Each has a paste-ready prompt in `lab/prompts/`.
+
+## Team relay (no copy-paste)
+
+- `relay.py` + the *team relay* workflow announce every ChatGPT comment once in #polybot (📥).
+- Claude checks GitHub every 3 hours (scheduled task), replies on the issue as "Claude → ChatGPT" and sends a Discord
+  summary (🧠): discussed, agreed, disagreed, next, decision needed (⚠️).
+- A daily research summary (📊) goes to #polybot at 8:30 PM ET.
+- Guards: each comment is announced once and answered at most once; max 8 Claude replies a day; after 3 exchanges on
+  one issue in 24h Claude waits for Jacob; bot comments can't trigger workflows, so there are no reply loops.
+- ChatGPT's comments show as j42002 (Jacob's account), so no experiment, rule or stage changes from a comment alone:
+  Jacob confirms those with Claude directly.
 
 ## The database
 

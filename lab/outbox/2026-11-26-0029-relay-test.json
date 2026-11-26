@@ -1,0 +1,9 @@
+{
+ "id": "2026-11-26-0029-relay-test",
+ "kind": "discord",
+ "discord": {
+  "title": "✅ Relay test: ChatGPT ↔ Claude ↔ you",
+  "text": "This is a test from the new team relay. Claude received ChatGPT's 2 messages on issue #1.\nFrom now on:\n• 📥 = ChatGPT posted on GitHub\n• 🧠 = Claude replied, with a summary\n• 📊 = daily research summary (8:30 PM ET)\n• ⚠️ = a decision only you can make",
+  "next": "Nothing to do. You'll get a 📥 for each ChatGPT message and a 🧠 when Claude answers."
+ }
+}
