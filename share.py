@@ -1,10 +1,10 @@
-"""Scoreboard picture + ready-made prompt for sharing with ChatGPT by hand ($0: free ChatGPT app).
+"""Daily scoreboard picture for #research-reports ($0). ChatGPT reviews it on GitHub; no copy-paste.
 
 python share.py          -> build data/share/scoreboard.png + chatgpt_prompt.txt and post both to Discord
 python share.py --daily  -> same, but only once per day (first run after 8 PM Eastern)
 
-Jacob copies the prompt + picture into the ChatGPT app. ChatGPT's answer can be pasted
-into data/chatgpt_notes.md (GitHub web editor), and Gemini reads it on its next board note.
+chatgpt_prompt.txt is still written (a plain-text summary of the same numbers) for anyone who wants it.
+Calibration uses ONE pre-specified checkpoint per settled v18+ market (the first logged), not every checkpoint.
 """
 import csv
 import json
@@ -63,24 +63,29 @@ def stats():
         g = [r for r in wl if r.get("ai_verdict") == v]
         if g:
             ai[v] = (len(g), sum(r["result"] == "WIN" for r in g), sum(float(r.get("pnl10") or 0) for r in g))
-    # calibration: favored side's model chance vs how often it won (all graded checkpoints)
+    # calibration: favored side's model chance vs how often it won.
+    # Pre-specified rule (ChatGPT review, #2): ONE checkpoint per settled v18+ market, the first one logged
+    # (most time left). Checkpoints inside one market move together, so counting them all overstates n.
     res = {r["slug"]: r.get("winner", "") for r in rows(os.path.join("data", "results.csv"))}
     bk = defaultdict(list)
-    for r in _exp(rows(os.path.join("data", "checkpoints.csv"))):
+    exp_cps = [r for r in _exp(rows(os.path.join("data", "checkpoints.csv"))) if res.get(r.get("slug")) and r.get("model_up")]
+    first = {}
+    for r in sorted(exp_cps, key=lambda r: (r.get("logged_utc") or "", -float(r.get("secs_left") or 0))):
+        first.setdefault(r["slug"], r)
+    for r in first.values():
         w = res.get(r.get("slug"))
-        if not w or not r.get("model_up"):
-            continue
         p = float(r["model_up"])
         up_won = str(w).lower().startswith("up")
         conf = max(p, 1 - p)
         bk[min(int(conf * 10), 9)].append((conf, up_won == (p >= 0.5)))
     calib = [(f"{k * 10}-{k * 10 + 10}%", len(v), sum(c for c, _ in v) / len(v), sum(x for _, x in v) / len(v))
              for k, v in sorted(bk.items()) if k >= 5]
-    rounds = len({s for s in res})
+    rounds = len(first)                                  # distinct settled v18+ markets in the calibration
+    checks = len(exp_cps)                                # all graded v18+ checkpoints (not independent)
     return {"tickets": len(t), "graded": len(done), "wins": wins, "losses": len(wl) - wins,
             "missed": sum(r["result"] == "MISSED" for r in done), "pnl": pnl,
             "win_rate": wins / len(wl) if wl else None, "breakeven": sum(prices) / len(prices) if prices else None,
-            "lag": med(lag), "fill": (fill, len(watched)), "ai": ai, "calib": calib, "rounds": rounds}
+            "lag": med(lag), "fill": (fill, len(watched)), "ai": ai, "calib": calib, "rounds": rounds, "checks": checks}
 
 
 def card(s, path):
@@ -112,7 +117,7 @@ def card(s, path):
 
     y = 550
     d.text((60 * S, y * S), "Is the win chance honest?", font=f(30, True), fill=WH)
-    d.text((60 * S, (y + 44) * S), f"Model said  →  actually won   ({s['rounds']} rounds graded)", font=f(22), fill=GR)
+    d.text((60 * S, (y + 44) * S), f"Model said → actually won · {s['rounds']} rounds, 1 check each", font=f(22), fill=GR)
     y += 90
     if not s["calib"]:
         d.text((60 * S, y * S), "Not enough graded rounds yet.", font=f(24), fill=GR)
@@ -159,7 +164,7 @@ def prompt(s):
         "Paper only until 300+ graded bets. Scoreboard (picture attached):\n"
         f"- Tickets graded {s['graded']}: won {s['wins']}, lost {s['losses']}, missed {s['missed']}\n"
         f"- Win rate {wr}, break-even incl. fee {be}, P&L after fees {s['pnl']:+.2f} at $10/ticket\n"
-        f"- Calibration: {cal}\n"
+        f"- Calibration (1 check per round, {s['rounds']} rounds; {s.get('checks', 0)} checks logged): {cal}\n"
         f"- Ticket speed: {round(s['lag'], 1) if s['lag'] is not None else 'n/a'}s; quote available 30s later (simulated) {s['fill'][0]}/{s['fill'][1]}\n"
         f"- Gemini second opinion: {ai}\n"
         "Be skeptical. In under 120 words: 1) what looks wrong or too good to be true, "
@@ -185,8 +190,10 @@ def main(daily=False):
         f.write(text + "\n")
     print(text)
     if WEBHOOK:
-        msg = ("📊 **Scoreboard for ChatGPT** - save the picture, then copy the text below into the free ChatGPT app."
-               "\n```\n" + text + "\n```")
+        msg = (f"📊 **Daily scoreboard** · experiment v{EXP_MIN}+ · paper only\n"
+               f"{s['graded']} tickets graded · {s['wins']}W / {s['losses']}L / {s['missed']} missed · "
+               f"P&L {s['pnl']:+.2f} after fees · goal 300 separate settled trades\n"
+               "ChatGPT reviews this on GitHub directly. No copy-paste needed.")
         with open(png, "rb") as f:
             r = requests.post(WEBHOOK, data={"payload_json": json.dumps({"content": msg[:1990]})},
                               files={"files[0]": ("scoreboard.png", f, "image/png")}, timeout=15)
