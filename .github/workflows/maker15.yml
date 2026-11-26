@@ -1,0 +1,62 @@
+name: maker15 (limit-order paper test, BTC 15m)
+# Paper only, never trades, no keys. Separate from polybot (5m) and backtest15: own concurrency group,
+# writes only data/maker15/. Rules frozen in data/maker15/PREREG.md.
+on:
+  schedule:
+    - cron: "5,25,45 * * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "live (forward test) or replay (exploratory preview)"
+        default: "live"
+      replay_markets:
+        description: "replay only: how many recent settled markets"
+        default: "1000"
+permissions:
+  contents: write
+concurrency:
+  group: maker15
+  cancel-in-progress: false
+env:
+  PYTHONUNBUFFERED: "1"
+jobs:
+  maker15:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: offline self-test
+        run: python maker15.py selftest
+      - name: live forward test (logs simulated orders, 55 min)
+        if: ${{ github.event.inputs.mode != 'replay' }}
+        run: python maker15.py live
+        env:
+          RUN_MINUTES: "55"
+      - name: replay (exploratory, never judged)
+        if: ${{ github.event.inputs.mode == 'replay' }}
+        run: python maker15.py replay ${{ github.event.inputs.replay_markets || '1000' }}
+      - name: grade + report
+        if: always()
+        run: python maker15.py grade
+      - name: commit data/maker15 only
+        if: always()
+        run: |
+          git config user.name "polybot"
+          git config user.email "polybot@users.noreply.github.com"
+          rm -rf /tmp/m15 && cp -r data/maker15 /tmp/m15
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            mkdir -p data/maker15 && cp /tmp/m15/* data/maker15/
+            git add data/maker15
+            git diff --cached --quiet && exit 0
+            git commit -q -m "maker15 data $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push -q origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
