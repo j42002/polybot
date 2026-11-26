@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-26 07:58 UTC
+updated: 2026-11-26 08:42 UTC
 tags: [history]
 ---
 # 🗓️ Project Timeline
@@ -12,6 +12,8 @@ Built from the git history (routine data commits left out). Newest first.
 - `c569858` vault sync 2026-11-26T01:33Z
 - `c7d463e` Founder decisions: 12-minute rule refuted (#1), new strategy development paused (#4); logged in vault
 - `7562309` Vault: rebuild after polybot/relay/checks runs (GitHub schedules barely fire); rewrite a note only when its content changed
+- `72c31d2` vault sync 2026-11-26T07:58Z
+- `9e350be` maker15: paper-only limit-order (maker) test on Kalshi BTC 15m
 
 ## 2026-11-25
 - `d29516c` polybot v1: paper-only BTC 5m scout + grader + hourly Actions schedule
