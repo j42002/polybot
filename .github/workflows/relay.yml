@@ -1,9 +1,11 @@
 name: team relay
-# ChatGPT <-> Claude via issue comments; Jacob notified in #polybot. $0 (GITHUB_TOKEN + Discord webhook).
+# ChatGPT <-> Claude via issue comments; status cards in #ai-team-chat (never #polybot). $0 (GITHUB_TOKEN + Discord webhook).
 # Writes only lab/relay_state.json. Never touches data/ or the experiments.
 on:
   issue_comment:
     types: [created]
+  issues:
+    types: [opened]
   push:
     branches: [main]
     paths: ["lab/outbox/**", "relay.py", ".github/workflows/relay.yml"]

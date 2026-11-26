@@ -3,10 +3,14 @@
 How messages move
 - ChatGPT posts comments on issues (through Jacob's GitHub connection, so they show as j42002).
   It marks them with a header like "## ChatGPT → Claude" or the signature "— ChatGPT".
-- `inbound` (GitHub Actions, on every new comment + every 30 min): each ChatGPT comment is announced
-  ONCE in #polybot.
-- Claude runs as a scheduled task every few hours: `pending` lists ChatGPT comments that still need a
-  reply. Claude writes each reply as a JSON file in lab/outbox/ and pushes it.
+- `inbound` (GitHub Actions, on every new comment, every new issue, and every 30 min): each ChatGPT request
+  (comment, or an issue ChatGPT opened) gets ONE status card in #ai-team-chat. The card is edited in place
+  as the status moves, so there are no duplicate messages:
+     📨 Received (the relay delivered it; NOT a Claude review)  🧠 Under review  ✅ Reviewed  ⚠️ Blocked
+  Ages and timestamps use Discord's own <t:…> format, so "received 2 hours ago" stays current by itself.
+- Claude answers either instantly (claude-fast.yml, if Jacob added CLAUDE_CODE_OAUTH_TOKEN) or from the hourly
+  scheduled task. `pending` lists what still needs a reply. Claude writes JSON files in lab/outbox/:
+  a "status" item (🧠 / ⚠️) and the reply itself.
 - `outbound` (GitHub Actions, on push to lab/outbox/): posts the reply as an issue comment (as the
   GitHub Actions bot, headed "Claude → ChatGPT") and a Discord summary: discussed / agreed / disagreed /
   next / decision needed.
@@ -38,7 +42,7 @@ TEAM_WEBHOOK = os.getenv("DISCORD_TEAM_WEBHOOK", "")
 RESEARCH_WEBHOOK = os.getenv("DISCORD_RESEARCH_WEBHOOK", "")
 STATE = os.path.join("lab", "relay_state.json")
 OUTBOX = os.path.join("lab", "outbox")
-CLAUDE_DAILY_MAX = 8
+CLAUDE_DAILY_MAX = 12
 MAX_AI_ROUNDS = 3
 CHATGPT_RE = re.compile(r"^\s*#{0,6}\s*\**\s*ChatGPT\s*(→|->)|—\s*ChatGPT\b", re.I | re.M)
 CLAUDE_RE = re.compile(r"^\s*#{0,6}\s*\**\s*Claude\s*(→|->)", re.I | re.M)
@@ -65,7 +69,7 @@ def load_state():
             s = json.load(f)
     except Exception:
         s = {}
-    for k, v in (("notified", []), ("answered", {}), ("sent", []), ("posted", []), ("commented", {}), ("discord_sent", [])):
+    for k, v in (("notified", []), ("answered", {}), ("sent", []), ("posted", []), ("commented", {}), ("discord_sent", []), ("requests", {})):
         s.setdefault(k, v)
     return s
 
@@ -134,26 +138,196 @@ def discord(payload, session=None, channel="team", username=None):
     return True
 
 
-# ---------- inbound: announce new ChatGPT comments once ----------
+def _hook(channel):
+    return (RESEARCH_WEBHOOK or TEAM_WEBHOOK) if channel == "research" else TEAM_WEBHOOK
+
+
+def discord_post(payload, session=None, channel="team", username=None):
+    """Post and return (ok, message_id) so the card can be edited later (Discord ?wait=true)."""
+    hook = _hook(channel)
+    if not hook:
+        return False, None
+    s = session or requests
+    try:
+        r = s.post(hook + ("&" if "?" in hook else "?") + "wait=true", json={**payload, "username": username or "Polybot HQ"},
+                   timeout=10)
+    except Exception:
+        return False, None
+    if not 200 <= r.status_code < 300:
+        print(f"relay: Discord answered HTTP {r.status_code}, card will retry next run")
+        return False, None
+    try:
+        return True, str(r.json().get("id") or "") or None
+    except Exception:
+        return True, None
+
+
+def discord_edit(msg_id, payload, session=None, channel="team"):
+    """Edit a card this webhook posted. Returns 'ok', 'gone' (deleted: post a new one) or 'retry'."""
+    hook = _hook(channel)
+    if not hook:
+        return "retry"
+    s = session or requests
+    try:
+        r = s.patch(f"{hook}/messages/{msg_id}", json=payload, timeout=10)
+    except Exception:
+        return "retry"
+    if 200 <= r.status_code < 300:
+        return "ok"
+    return "gone" if r.status_code == 404 else "retry"
+
+
+# ---------- request status cards ----------
+STATUS = {
+    "received": ("📨 Received", 0x10A37F, "The relay delivered it. Claude has **not** reviewed it yet."),
+    "review": ("🧠 Under review", 0x5865F2, "Claude is working on a reply."),
+    "reviewed": ("✅ Reviewed", 0x22C55E, "Claude replied on GitHub."),
+    "blocked": ("⚠️ Blocked", 0xF5A623, "Claude can't finish this without something else first."),
+}
+ORDER = {"received": 0, "review": 1, "blocked": 1, "reviewed": 2}
+
+
+def _epoch(iso):
+    try:
+        return int(datetime.strptime(iso, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).timestamp())
+    except Exception:
+        return None
+
+
+def _now_iso():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _dur(a, b):
+    ea, eb = _epoch(a), _epoch(b)
+    if ea is None or eb is None:
+        return ""
+    m = max(0, eb - ea) // 60
+    return f"{m // 60}h {m % 60}m" if m >= 60 else f"{m} min"
+
+
+def status_embed(key, r):
+    label, color, meaning = STATUS.get(r["status"], STATUS["received"])
+    t = lambda iso, f="f": f"<t:{_epoch(iso)}:{f}>" if _epoch(iso) else iso
+    lines = [f"**#{r['issue']} · {r.get('title') or 'ChatGPT request'}**"[:300]]
+    if r.get("summary"):
+        lines.append(r["summary"][:300])
+    lines.append(f"**Status:** {label}. {meaning}")
+    lines.append(f"**Received:** {t(r['received'])} ({t(r['received'], 'R')})")
+    if r["status"] == "review" and r.get("since"):
+        lines.append(f"**Claude started:** {t(r['since'], 'R')}")
+    if r["status"] == "blocked":
+        lines.append(f"**Why:** {r.get('reason') or 'not given'}")
+        if r.get("next"):
+            lines.append(f"**Next:** {r['next']}")
+    if r["status"] == "reviewed":
+        lines.append(f"**Claude replied:** {t(r.get('since') or r['received'])}" +
+                     (f" · [read the reply]({r['reply_url']})" if r.get("reply_url") else ""))
+        lines.append(f"**Response time:** {_dur(r['received'], r.get('since') or r['received'])}")
+    elif r["status"] != "reviewed":
+        lines.append("_Claude checks for requests every hour (instantly once fast mode is on)._")
+    return {"embeds": [{"title": f"{label} · ChatGPT request on #{r['issue']}"[:250], "url": r.get("url"),
+                        "description": "\n".join(lines)[:4000], "color": color,
+                        "footer": {"text": f"request {key} · paper only · $0 · decisions stay with Jacob"}}]}
+
+
+def new_request(st, key, issue, title, summary, url, created):
+    st["requests"][key] = {"issue": issue, "title": title, "summary": summary, "url": url, "received": created,
+                           "status": "received", "since": created, "dirty": True, "msg": None,
+                           "history": [["received", _now_iso()]]}
+
+
+def set_status(st, key, status, **kw):
+    """Move a request forward. Never backwards (a late 'review' can't undo 'reviewed')."""
+    r = st["requests"].get(str(key))
+    if not r or status not in STATUS:
+        return False
+    if ORDER[status] < ORDER[r["status"]]:
+        return False
+    if r["status"] == status and all(r.get(k) == v for k, v in kw.items()):
+        return False
+    r.update(kw)
+    r["status"] = status
+    r["since"] = kw.get("since") or _now_iso()
+    r["history"].append([status, r["since"]])
+    r["dirty"] = True
+    return True
+
+
+def sync_cards(st, session=None, max_new=10):
+    """Post or edit every card whose status changed. Only a 2xx from Discord clears the 'dirty' flag."""
+    new = 0
+    for key, r in st["requests"].items():
+        if not r.get("dirty"):
+            continue
+        payload = status_embed(key, r)
+        if r.get("msg"):
+            res = discord_edit(r["msg"], payload, session)
+            if res == "ok":
+                r["dirty"] = False
+                continue
+            if res == "retry":
+                continue
+        if new >= max_new:
+            continue
+        ok, mid = discord_post(payload, session, username="Polybot HQ")
+        if ok:
+            r["msg"], r["dirty"] = mid, False
+            new += 1
+
+
+def react(session, path, content="eyes"):
+    """Small GitHub reaction (👀) on the request itself: visible proof the relay saw it. Best effort."""
+    try:
+        gh("POST", path, session, json={"content": content})
+    except Exception:
+        pass
+
+
+def is_chatgpt_issue(i):
+    return ("number" in i and "pull_request" not in i and (i.get("user") or {}).get("login") == "j42002"
+            and bool(CHATGPT_RE.search(i.get("body") or "")))
+
+
+def recent_issues(session=None, days=7):
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        r = gh("GET", "/issues", session, params={"state": "all", "since": since, "per_page": 100, "page": 1})
+        return [i for i in r.json() if isinstance(i, dict) and "number" in i and "issue_url" not in i]
+    except Exception as e:
+        print(f"relay: could not list issues ({e})")
+        return []
+
+
+# ---------- inbound: one status card per ChatGPT request ----------
 
 def inbound(session=None):
     st = load_state()
     n = 0
     for c in recent_comments(session):
-        if not is_chatgpt(c) or str(c["id"]) in st["notified"]:
+        cid = str(c["id"])
+        if not is_chatgpt(c) or cid in st["requests"]:
             continue
-        head, text = excerpt(c["body"])
-        ok = discord({"embeds": [{
-            "title": f"📥 ChatGPT posted on #{issue_num(c)}"[:250],
-            "description": f"**{head}**\n{text}"[:3900] if head else text[:3900],
-            "url": c["html_url"], "color": 0x10A37F,
-            "footer": {"text": "Claude replies on GitHub within ~3 hours · paper only · $0"}}]}, session,
-            channel="team", username="ChatGPT (research director)")
-        if ok:                                         # only a delivered announcement counts; otherwise retry next run
-            st["notified"].append(str(c["id"]))
-            n += 1
+        if cid in st["answered"]:                      # older, already answered before status cards existed
+            continue
+        head, text = excerpt(c["body"], 280)
+        new_request(st, cid, issue_num(c), head, text, c["html_url"], c["created_at"])
+        react(session, f"/issues/comments/{cid}/reactions")
+        if cid not in st["notified"]:
+            st["notified"].append(cid)
+        n += 1
+    for i in recent_issues(session):
+        key = f"issue-{i['number']}"
+        if not is_chatgpt_issue(i) or key in st["requests"] or key in st["answered"]:
+            continue
+        _, text = excerpt(i.get("body"), 280)
+        new_request(st, key, i["number"], i.get("title", ""), text, i.get("html_url"), i.get("created_at") or _now_iso())
+        react(session, f"/issues/{i['number']}/reactions")
+        n += 1
+    sync_cards(st, session)
     save_state(st)
-    print(f"relay inbound: {n} new ChatGPT comment(s) announced")
+    waiting = sum(1 for r in st["requests"].values() if r.get("dirty"))
+    print(f"relay inbound: {n} new ChatGPT request(s); {waiting} card(s) waiting for Discord")
     return n
 
 
@@ -165,7 +339,8 @@ def pending(session=None):
     now = datetime.now(timezone.utc)
     today = now.strftime("%Y-%m-%d")
     claude_today = sum(1 for c in cs if is_claude(c) and c["created_at"].startswith(today))
-    queued = {str(o.get("reply_to")) for o in outbox_items() if o.get("reply_to")}
+    queued = {str(o.get("reply_to")) for o in outbox_items() if o.get("reply_to") and o.get("kind") != "status"}
+    queued |= {str(a) for o in outbox_items() for a in (o.get("also_answers") or [])}
     out, skipped = [], []
     for c in cs:
         if not is_chatgpt(c):
@@ -183,8 +358,24 @@ def pending(session=None):
             skipped.append((cid, iss, f"daily cap {CLAUDE_DAILY_MAX} reached"))
             continue
         out.append({"comment_id": c["id"], "issue": iss, "url": c["html_url"], "created_at": c["created_at"],
-                    "body": c["body"]})
+                    "body": c["body"], "context": _context(cs, iss, c["id"])})
+    for i in recent_issues(session, days=3):
+        key = f"issue-{i['number']}"
+        if not is_chatgpt_issue(i) or key in st["answered"] or key in queued:
+            continue
+        if claude_today + len(out) >= CLAUDE_DAILY_MAX:
+            skipped.append((key, i["number"], f"daily cap {CLAUDE_DAILY_MAX} reached"))
+            continue
+        out.append({"comment_id": key, "issue": i["number"], "url": i.get("html_url"), "created_at": i.get("created_at"),
+                    "title": i.get("title"), "body": i.get("body"), "context": _context(cs, i["number"], None)})
     return out, skipped
+
+
+def _context(cs, iss, cid):
+    """Earlier comments on the same issue (newest 6, trimmed) so a fresh Claude session has the thread."""
+    prior = [c for c in cs if issue_num(c) == iss and c["id"] != cid]
+    return [{"id": c["id"], "who": "Claude" if is_claude(c) else "ChatGPT" if is_chatgpt(c) else (c.get("user") or {}).get("login"),
+             "created_at": c["created_at"], "body": (c.get("body") or "")[:1500]} for c in prior[-6:]]
 
 
 def outbox_items():
@@ -235,11 +426,19 @@ def outbound(session=None):
         if oid in st["sent"]:
             continue
         kind = o.get("kind", "comment+discord")
+        if kind == "status":                           # 🧠 / ⚠️ only: edits the request card, no GitHub comment
+            set_status(st, o.get("reply_to"), o.get("status", "review"),
+                       **{k: o[k] for k in ("reason", "next") if o.get(k)})
+            st["sent"].append(oid)
+            save_state(st)
+            done += 1
+            continue
         if "comment" in kind and oid not in st["commented"]:
             rt = str(o.get("reply_to") or "")
             if rt and rt in st["answered"]:
                 print(f"relay: {oid}: comment {rt} already answered, no second comment")
                 st["commented"][oid] = "skipped-duplicate"
+                set_status(st, rt, "reviewed")
             else:
                 posted_today = [p for p in st["posted"] if p.startswith(today)]
                 if len(posted_today) >= CLAUDE_DAILY_MAX:
@@ -251,8 +450,9 @@ def outbound(session=None):
                 body += "\n\n_Posted by the team relay for Claude (lead developer). Paper only, $0. Major decisions wait for Jacob._"
                 r = gh("POST", f"/issues/{o['issue']}/comments", session, json={"body": body})
                 st["commented"][oid] = r.json().get("html_url")
-                if rt:
-                    st["answered"][rt] = r.json().get("id")
+                for a in ([rt] if rt else []) + [str(x) for x in (o.get("also_answers") or [])]:
+                    st["answered"][a] = r.json().get("id")
+                    set_status(st, a, "reviewed", reply_url=r.json().get("html_url"))
                 st["posted"].append(f"{today} {oid}")
             save_state(st)
         if "discord" in kind or "report" in kind:
@@ -266,9 +466,30 @@ def outbound(session=None):
         st["sent"].append(oid)
         save_state(st)                                 # after every item: a later failure can't cause a repeat
         done += 1
+    sync_cards(st, session)
     save_state(st)
     print(f"relay outbound: {done} item(s) fully delivered")
     return done
+
+
+def validate(paths):
+    """Gate for files Claude wrote in the fast workflow: only well-formed reply/status items may be committed."""
+    bad = []
+    for p in paths:
+        try:
+            o = json.load(open(p, encoding="utf-8"))
+            assert os.path.dirname(os.path.abspath(p)) == os.path.abspath(OUTBOX), "outside lab/outbox"
+            assert o.get("kind") in ("comment+discord", "status"), "kind must be comment+discord or status"
+            assert isinstance(o.get("issue"), int) and o.get("reply_to"), "issue (int) and reply_to required"
+            if o["kind"] == "status":
+                assert o.get("status") in ("review", "blocked"), "status must be review or blocked"
+            else:
+                assert isinstance(o.get("body"), str) and len(o["body"]) < 60000, "body required"
+        except Exception as e:
+            bad.append(f"{p}: {e}")
+    for b in bad:
+        print("relay validate: REJECTED", b)
+    return not bad
 
 
 if __name__ == "__main__":
@@ -280,5 +501,7 @@ if __name__ == "__main__":
     elif cmd == "pending":
         items, skipped = pending()
         print(json.dumps({"pending": items, "skipped": skipped}, indent=1))
+    elif cmd == "validate":
+        sys.exit(0 if validate(sys.argv[2:]) else 1)
     else:
-        print("usage: python relay.py inbound|outbound|pending")
+        print("usage: python relay.py inbound|outbound|pending|validate <files>")
