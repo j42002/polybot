@@ -130,3 +130,11 @@ At 12:00 elapsed, the trend side is usually already the market favorite (often 7
 - 5m and 15m are reported side by side, never pooled.
 
 **Questions:** (1) Do you approve AGREE as the single primary hypothesis? (2) Agree that Phase 1 is exploratory only and that only the Phase 2 forward results can confirm?
+
+### 2026-11-26 00:10Z · Claude → team (research lab opened)
+Jacob asked for a multi-agent research lab. It's live in this repo at $0, separate from both experiments (agent.py, grade.py and backtest15.py untouched).
+- **Database = GitHub Issues.** Each strategy is an issue made with the "Strategy submission" form: claim, original sources, exact rules, evidence, weaknesses, test plan. Reviews are comments. Labels track stage (1-submitted → 6-verdict) and evidence level (L0 claim → L3 forward-tested). lab/DATABASE.md and lab/strategies.csv rebuild automatically.
+- **Roles:** Claude = lead developer · ChatGPT = research director · Grok = strategy scout · Perplexity = fact-checker · Gemini = independent reviewer (automatic, free key) · Jacob = approves every stage change.
+- **Coordination at $0:** only Claude and Gemini can write to GitHub on their own. ChatGPT, Grok and Perplexity have free apps but no free API, so Jacob carries their output using the paste-ready prompts in lab/prompts/. All of them can read this public repo.
+- **Seeded with 4 existing records:** the 12-minute rule (testing, Phase 1), the Polybot 5m model edge (testing, v18), buy-the-10c-side (refuted, exploratory), two-sided market making (untestable at $0).
+- Rule written into the lab: only L3 (a pre-registered forward paper test) counts as evidence that something works.

@@ -1,0 +1,55 @@
+name: Strategy submission
+description: Submit a trading idea to the research lab. A claim is a hypothesis, never evidence.
+title: "[Strategy] "
+labels: ["strategy", "stage:1-submitted", "evidence:L0-claim"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Lab rule:** no strategy is trusted because someone says it works. Everything starts at evidence level L0 (claim only)
+        and moves up only with checkable evidence. Paper trading only. Budget $0.
+  - type: dropdown
+    id: submitter
+    attributes:
+      label: Submitted by
+      options: [Grok (strategy scout), Perplexity (fact-checker), ChatGPT (research director), Gemini (reviewer), Claude (developer), Jacob (founder)]
+    validations: {required: true}
+  - type: input
+    id: market
+    attributes:
+      label: Market
+      description: Venue and contract, e.g. "Polymarket US BTC Up/Down 15m" or "Kalshi KXBTC15M"
+    validations: {required: true}
+  - type: textarea
+    id: claim
+    attributes:
+      label: The claim, in the source's own terms
+      description: What does the trader say the strategy does and earns? Quote briefly, paraphrase the rest.
+    validations: {required: true}
+  - type: textarea
+    id: sources
+    attributes:
+      label: Original sources
+      description: Links to the ORIGINAL post/video/thread (not reposts), with dates. Note if the source sells a course, bot or referral code.
+    validations: {required: true}
+  - type: textarea
+    id: rules
+    attributes:
+      label: Exact rules (as testable as possible)
+      description: Entry time, what counts as a signal, which side, price limit, exit. Write "UNSPECIFIED" for anything the source leaves vague.
+    validations: {required: true}
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Supporting evidence
+      description: Anything checkable (public trade history, data, independent tests). Screenshots of wins alone count as L0.
+  - type: textarea
+    id: weaknesses
+    attributes:
+      label: Weaknesses and red flags
+      description: Survivorship, selling something, no losses shown, fees or delay ignored, vague rules, tiny sample...
+  - type: textarea
+    id: test_plan
+    attributes:
+      label: How could we paper-test it at $0?
+      description: Which public data, what would prove it wrong.

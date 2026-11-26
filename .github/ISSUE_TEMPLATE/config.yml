@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Lab rules and pipeline
+    url: https://github.com/j42002/polybot/blob/main/lab/README.md
+    about: How ideas move from claim to verdict.

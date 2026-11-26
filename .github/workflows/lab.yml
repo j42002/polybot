@@ -1,0 +1,54 @@
+name: research lab
+# Strategy database = GitHub Issues. Seeds starting strategies, runs the free Gemini review,
+# rebuilds lab/DATABASE.md + lab/strategies.csv. $0 (free GITHUB_TOKEN + optional free Gemini key).
+# Writes only lab/. Never touches data/ or the live experiments.
+on:
+  issues:
+    types: [opened, edited, labeled, unlabeled, closed, reopened]
+  issue_comment:
+    types: [created]
+  push:
+    branches: [main]
+    paths: ["lab/seed.json", "lab_sync.py", ".github/workflows/lab.yml"]
+  schedule:
+    - cron: "17 13 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+  issues: write
+concurrency:
+  group: lab
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: sync lab
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python lab_sync.py
+      - name: commit lab/ only
+        run: |
+          git config user.name "polybot-lab"
+          git config user.email "polybot@users.noreply.github.com"
+          rm -rf /tmp/lab && cp -r lab /tmp/lab
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            cp /tmp/lab/DATABASE.md /tmp/lab/strategies.csv lab/ 2>/dev/null || true
+            [ -f /tmp/lab/gemini_usage.json ] && cp /tmp/lab/gemini_usage.json lab/
+            git add lab/DATABASE.md lab/strategies.csv lab/gemini_usage.json 2>/dev/null || true
+            git diff --cached --quiet && exit 0
+            git commit -q -m "lab database $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push -q origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1

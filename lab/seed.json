@@ -1,0 +1,58 @@
+[
+  {
+    "title": "[Strategy] 12-minute rule: pick the trend side with 3 minutes left (BTC 15m)",
+    "labels": ["strategy", "stage:5-testing", "evidence:L0-claim"],
+    "fields": {
+      "Submitted by": "Jacob (founder)",
+      "Market": "Kalshi KXBTC15M; Polymarket US BTC Up/Down 15m",
+      "The claim, in the source's own terms": "A TikTok creator watches a 15-minute BTC contract for 12 minutes, then picks UP or DOWN by the current trend with 3 minutes left, and says it wins.",
+      "Original sources": "TikTok video found by Jacob (link to add). Original not yet verified by Perplexity. Unknown whether the creator sells anything.",
+      "Exact rules (as testable as possible)": "Source: entry at 12:00 elapsed, side = 'trend' (UNSPECIFIED). Lab pre-registration (data/15m/PREREG.md): PRIMARY = AGREE, i.e. bet only when BTC is on the winning side of the target AND moved that way over the last 60s. Entry = ask ~60s later, Kalshi taker fee, held to settlement.",
+      "Supporting evidence": "None checkable yet. Legacy 5m data at the same 80%-elapsed point hinted at it (not evidence: known bugs, no delay).",
+      "Weaknesses and red flags": "Trend rule unspecified. The trend side is usually already the favourite at 75-90c, so it wins often by construction; profit needs the market to under-price continuation. Fees and delay not mentioned by the source.",
+      "How could we paper-test it at $0?": "Phase 1 (running): Kalshi historical backtest, backtest15.py -> data/15m/report.md (exploratory). Phase 2 (if justified): forward paper test on Polymarket US 15m, 300 trades."
+    }
+  },
+  {
+    "title": "[Strategy] Polybot model edge: buy when our win chance beats the price by 6-15% (BTC 5m)",
+    "labels": ["strategy", "stage:5-testing", "evidence:L0-claim"],
+    "fields": {
+      "Submitted by": "Claude (developer)",
+      "Market": "Polymarket US BTC Up/Down 5m",
+      "The claim, in the source's own terms": "Our random-walk model (volatility x1.4, capped at 88%) finds rounds where the market misprices the outcome by 6-15% after fees at 4:00 or 3:30 left.",
+      "Original sources": "Internal: agent.py v18+ (frozen model rw-m1.4-c0.88-b15), team board history.",
+      "Exact rules (as testable as possible)": "One ticket per round max; 6% <= edge <= 15% after fee; no ticket after a spike or in chop; re-priced right before sending; simulated fill = ask at +30s if within the limit.",
+      "Supporting evidence": "None yet: the v18 forward experiment started 2026-11-25. Out-of-sample calibration on legacy data was honest up to ~70% and overconfident above.",
+      "Weaknesses and red flags": "A big gap with the market is often a warning, not an edge. Coinbase is not the settlement index (BRTI). Few tickets per day, so 300 will take a while.",
+      "How could we paper-test it at $0?": "Running: forward paper test, report.md 'Research report: experiment v18+ only'."
+    }
+  },
+  {
+    "title": "[Strategy] Buy the cheap (~10c) side for a late bounce (BTC 5m)",
+    "labels": ["strategy", "stage:6-verdict", "evidence:L0-claim", "verdict:refuted"],
+    "fields": {
+      "Submitted by": "Claude (developer)",
+      "Market": "Polymarket BTC Up/Down 5m",
+      "The claim, in the source's own terms": "Cheap longshot contracts pay 9-10x, so buying the ~10c side near the end catches enough reversals to profit.",
+      "Original sources": "Common claim in prediction-market social posts; no single original source verified.",
+      "Exact rules (as testable as possible)": "Buy the side priced ~10c in the final minutes; hold to settlement.",
+      "Supporting evidence": "Lab backtest (exploratory, early polybot data) found no edge: longshots won about as often as priced or less, before fees.",
+      "Weaknesses and red flags": "Longshot bias usually runs the other way (cheap contracts are over-priced). Exploratory result on early data only.",
+      "How could we paper-test it at $0?": "Could be re-run on Kalshi 15m history with the same machinery as backtest15.py if the team wants a cleaner test."
+    }
+  },
+  {
+    "title": "[Strategy] Two-sided market making: buy Up and Down for under $1 combined",
+    "labels": ["strategy", "stage:3-review", "evidence:L1-sourced", "verdict:untestable"],
+    "fields": {
+      "Submitted by": "Claude (developer)",
+      "Market": "Polymarket BTC Up/Down 5m/15m",
+      "The claim, in the source's own terms": "Top 5-minute wallets rest orders on both sides and lock in the spread when Up + Down costs less than $1.",
+      "Original sources": "Public wallet histories on the Polymarket leaderboard (researched 2026-11-25).",
+      "Exact rules (as testable as possible)": "Post limit orders on both sides so the combined cost is under $1; profit = $1 minus the cost, if both fill.",
+      "Supporting evidence": "Observed in public top-wallet trade histories (L1).",
+      "Weaknesses and red flags": "Needs resting orders that actually fill (queue position, adverse selection: you get filled when the market moves against you). Speed and capital game.",
+      "How could we paper-test it at $0?": "Not honestly with top-of-book snapshots: a paper test can't know whether a resting order would have filled. Untestable at $0 for now."
+    }
+  }
+]
