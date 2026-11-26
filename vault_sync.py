@@ -69,6 +69,11 @@ def write(rel, body, tags=(), title=None, seed=False):
     note = "\n".join(fm) + "\n" + (f"# {title}\n\n" if title else "") + redact(body).rstrip() + "\n"
     if not seed:
         note += "\n---\n*Auto-generated from GitHub by `vault_sync.py`. Edits here are overwritten; write your own notes in a new file.*\n"
+    strip = lambda t: re.sub(r"^updated: .*$", "", t, count=1, flags=re.M)
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            if strip(f.read()) == strip(note):
+                return False                             # content unchanged: keep the old timestamp, no churn
     with open(path, "w", encoding="utf-8") as f:
         f.write(note)
     written.append(rel)

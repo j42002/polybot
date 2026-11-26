@@ -1,7 +1,13 @@
 name: vault sync
 # Rebuilds the Polybot HQ Obsidian vault (vault/Polybot HQ/) from the repo + public issues. $0, one-way.
+# Skips the commit when nothing changed, so frequent triggers don't add noise.
 # Only notes marked `polybot_auto: true` are rewritten; human notes are never touched. Commits only vault/.
 on:
+  # GitHub's timed (schedule) triggers barely fire on this repo, so the vault also rebuilds whenever
+  # the bot, the relay or the team checks finish. Those run all day. Concurrency keeps it to one at a time.
+  workflow_run:
+    workflows: ["polybot", "team relay", "team checks"]
+    types: [completed]
   schedule:
     - cron: "41 */3 * * *"
   push:
