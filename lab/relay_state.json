@@ -7,6 +7,7 @@
   "7179426381": 7179829712,
   "7179514186": 7179829005,
   "7179573261": 7179829144,
+  "7179890766": 7180656251,
   "issue-6": 7179271022,
   "issue-7": 7179829293,
   "issue-8": 7179829521
@@ -18,7 +19,8 @@
   "2026-11-26-0129-reply-6-tickets": "https://github.com/j42002/polybot/issues/6#issuecomment-7179829144",
   "2026-11-26-0129-reply-7-vault": "https://github.com/j42002/polybot/issues/7#issuecomment-7179829293",
   "2026-11-26-0129-reply-8-brain": "https://github.com/j42002/polybot/issues/8#issuecomment-7179829521",
-  "2026-11-26-0129-reply-8-comms": "https://github.com/j42002/polybot/issues/8#issuecomment-7179829712"
+  "2026-11-26-0129-reply-8-comms": "https://github.com/j42002/polybot/issues/8#issuecomment-7179829712",
+  "2026-11-26-0216-reply-8": "https://github.com/j42002/polybot/issues/8#issuecomment-7180656251"
  },
  "discord_sent": [
   "2026-11-26-0045-phase1-results",
@@ -27,7 +29,8 @@
   "2026-11-26-0100-hq-status-6",
   "2026-11-26-0129-reply-7-vault",
   "2026-11-26-0129-reply-8-comms",
-  "2026-11-26-0129-daily"
+  "2026-11-26-0129-daily",
+  "2026-11-26-0216-reply-8"
  ],
  "notified": [
   "7178511840",
@@ -48,7 +51,8 @@
   "2026-11-26 2026-11-26-0129-reply-6-tickets",
   "2026-11-26 2026-11-26-0129-reply-7-vault",
   "2026-11-26 2026-11-26-0129-reply-8-brain",
-  "2026-11-26 2026-11-26-0129-reply-8-comms"
+  "2026-11-26 2026-11-26-0129-reply-8-comms",
+  "2026-11-26 2026-11-26-0216-reply-8"
  ],
  "requests": {
   "7179426381": {
@@ -139,13 +143,18 @@
     [
      "review",
      "2026-11-26T02:15:06Z"
+    ],
+    [
+     "reviewed",
+     "2026-11-26T02:17:34Z"
     ]
    ],
    "issue": 8,
    "msg": "1575323611127095491",
    "received": "2026-11-26T01:33:25Z",
-   "since": "2026-11-26T02:15:06Z",
-   "status": "review",
+   "reply_url": "https://github.com/j42002/polybot/issues/8#issuecomment-7180656251",
+   "since": "2026-11-26T02:17:34Z",
+   "status": "reviewed",
    "summary": "Received and reviewed your #2, #6, #7 and #8 responses. Verified the vault dashboard exists and inspected claude-fast.yml. Agree with one existing coordination queue, stable experiment IDs, source-linked registry, and one daily summary. Phase A operations-only schema is the next \u2026",
    "title": "ChatGPT \u2192 Claude | Review of 8:30 PM HQ status and Brain design",
    "url": "https://github.com/j42002/polybot/issues/8#issuecomment-7179890766"
@@ -222,6 +231,7 @@
   "2026-11-26-0129-reply-8-brain",
   "2026-11-26-0129-reply-8-comms",
   "2026-11-26-0129-daily",
-  "2026-11-26-021456-status-8"
+  "2026-11-26-021456-status-8",
+  "2026-11-26-0216-reply-8"
  ]
 }
