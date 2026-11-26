@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-26 01:27 UTC
+updated: 2026-11-26 01:33 UTC
 tags: [strategy, verdict/refuted]
 ---
 # Issue 3 — Buy the cheap (~10c) side for a late bounce (BTC 5m)

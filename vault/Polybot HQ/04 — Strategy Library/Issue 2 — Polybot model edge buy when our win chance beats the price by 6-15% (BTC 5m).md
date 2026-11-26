@@ -1,12 +1,12 @@
 ---
 polybot_auto: true
-updated: 2026-11-26 01:27 UTC
+updated: 2026-11-26 01:33 UTC
 tags: [strategy]
 ---
 # Issue 2 — Polybot model edge buy when our win chance beats the price by 6-15% (BTC 5m)
 
 > [!abstract] Status
-> **stage:5-testing, evidence:L0-claim** · [open on GitHub](https://github.com/j42002/polybot/issues/2) · 1 comments
+> **stage:5-testing, evidence:L0-claim** · [open on GitHub](https://github.com/j42002/polybot/issues/2) · 2 comments
 
 ## Submission
 ### Submitted by

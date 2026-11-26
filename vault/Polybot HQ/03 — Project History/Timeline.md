@@ -1,11 +1,14 @@
 ---
 polybot_auto: true
-updated: 2026-11-26 01:27 UTC
+updated: 2026-11-26 01:33 UTC
 tags: [history]
 ---
 # 🗓️ Project Timeline
 
 Built from the git history (routine data commits left out). Newest first.
+
+## 2026-11-26
+- `9c67126` vault sync 2026-11-26T01:27Z
 
 ## 2026-11-25
 - `d29516c` polybot v1: paper-only BTC 5m scout + grader + hourly Actions schedule
@@ -51,6 +54,7 @@ Built from the git history (routine data commits left out). Newest first.
 - `66595f7` Issue #6: Polybot HQ status + acceptance test evidence
 - `c851c04` Scoreboard: calibration uses 1 pre-specified check per settled v18+ round (was all checkpoints), labels rounds vs checks, drops the copy-paste prompt (ChatGPT review on #2)
 - `d624b90` Polybot HQ Obsidian vault: vault_sync.py builds vault/Polybot HQ/ (12 folders, dashboard, team profiles, strategies, threads, reports, decisions, lessons, templates, graph colors) from GitHub every 3h; human notes never overwritten; secrets redacted
+- `a068146` Vault: add Discoveries and Wins note + dashboard link
 
 ---
 *Auto-generated from GitHub by `vault_sync.py`. Edits here are overwritten; write your own notes in a new file.*

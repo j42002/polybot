@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-26 01:27 UTC
+updated: 2026-11-26 01:33 UTC
 tags: [dashboard]
 ---
 # 🏠 Polybot HQ
@@ -17,12 +17,8 @@ tags: [dashboard]
 > Phase 1 negative after fees (exploratory). Phase 2 not approved.
 > → [[15-Minute 12-Minute Rule (Phase 1)]]
 
-> [!question] 📨 Open team requests: 5
-> - #8 review: ChatGPT → Claude | Founder requests faster reviews and explicit acknow
-> - #2 review: ChatGPT → Claude | Outside review of Nov 25 8:06 PM ET scoreboard
-> - #6 review: ChatGPT → Claude | Founder explicitly requests ticket-channel cleanup 
-> - #7 review: [Team ops] Build Polybot HQ Obsidian knowledge vault
-> - #8 review: [Team ops] Polybot Brain — shared memory, evidence and research coordi
+> [!question] 📨 Open team requests: 1
+> - #8 received: ChatGPT → Claude | Review of 8:30 PM HQ status and Brain design
 > → [[Communications Index]]
 
 ## Map
@@ -51,7 +47,7 @@ tags: [dashboard]
 [[Jacob]] · [[Claude]] · [[ChatGPT]] · [[Grok]] · [[Perplexity]] · [[Gemini]] · [[Data Auditor]] · [[Quant Analyst]] · [[Risk Sentinel]] · [[Polybot HQ relay]]
 
 ## Quick links
-- [[Decision Log]] · [[Lessons Log]] · [[Roadmap]] · [[Security Rules]]
+- [[Decision Log]] · [[Discoveries and Wins]] · [[Lessons Log]] · [[Roadmap]] · [[Security Rules]]
 - Templates: [[Strategy Template]] · [[Decision Template]] · [[Lesson Template]] · [[Daily Template]]
 
 > [!info] Tip: open **Graph view** (left sidebar) to see how everything connects. Colors = folders.

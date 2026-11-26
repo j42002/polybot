@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-26 01:27 UTC
+updated: 2026-11-26 01:33 UTC
 tags: [communication, strategy]
 ---
 # 💬 Issue 1 — 12-minute rule pick the trend side with 3 minutes left (BTC 15m)
