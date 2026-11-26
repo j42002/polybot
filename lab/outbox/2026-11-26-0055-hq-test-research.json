@@ -1,0 +1,9 @@
+{
+ "id": "2026-11-26-0055-hq-test-research",
+ "kind": "report",
+ "discord": {
+  "title": "✅ Polybot HQ test 2/2: #research-reports",
+  "text": "If you can read this in #research-reports, the research webhook works.\nDaily scoreboards and Data Auditor / Quant Analyst / Risk Sentinel checks land here.",
+  "next": "Nothing to do."
+ }
+}

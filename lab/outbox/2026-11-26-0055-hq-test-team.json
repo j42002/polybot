@@ -1,0 +1,9 @@
+{
+ "id": "2026-11-26-0055-hq-test-team",
+ "kind": "discord",
+ "discord": {
+  "title": "✅ Polybot HQ test 1/2: #ai-team-chat",
+  "text": "If you can read this in #ai-team-chat, the team webhook works.\nChatGPT and Claude updates now land here. Tickets stay in #polybot.",
+  "next": "Nothing to do."
+ }
+}
