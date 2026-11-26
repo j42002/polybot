@@ -1,23 +1,23 @@
 ---
 polybot_auto: true
-updated: 2026-11-26 01:33 UTC
+updated: 2026-11-26 07:58 UTC
 tags: [results, checks]
 ---
 # 🧮 Team Checks (latest)
 
-# Team checks · 2026-11-26 00:54 UTC
+# Team checks · 2026-11-26 04:12 UTC
 
 Deterministic Python checks, $0, read-only.
 
-## 🔴 Data Auditor
+## 🟡 Data Auditor
 
-- ❌ 5m rounds observed in the last 24h: 95/288 (33%)
+- ⚠️ 5m rounds observed in the last 24h: 139/288 (48%)
 - ✅ duplicate checkpoint rows (v18+): 0
-- ⚠️ checks with no market quote (24h): 64/470
+- ⚠️ checks with no market quote (24h): 64/677
 - ✅ rows with unreadable timestamps: 0
-- ✅ close samples with gaps (>6s hole or <20 samples): 4/98
-- ✅ alerts that failed delivery (v18+): 0/10
-- ⚠️ loop stalls >5s (last runs): 1 · longest BTC price gap 9.0s
+- ✅ close samples with gaps (>6s hole or <20 samples): 4/142
+- ⚠️ alerts that failed delivery (v18+): 1/17
+- ⚠️ loop stalls >5s (last runs): 2 · longest BTC price gap 10.7s
 - ✅ 15m backtest settlement mismatches: 0/6456
 - ✅ 15m markets without a usable candle: 0/6456
 
@@ -37,7 +37,10 @@ Deterministic Python checks, $0, read-only.
 - ✅ account access off (no Polymarket keys in workflows)
 - ✅ 5m model still frozen (MODEL_FROZEN = True)
 - ✅ team relay can't post into the #polybot ticket channel
-- ⚠️ workflow runs in 24h: 63, failed: 2 (polybot)
+- ✅ DISCORD_WEBHOOK → #polybot-moves (tickets only) (verified with Discord)
+- ✅ DISCORD_TEAM_WEBHOOK → #ai-team-chat (verified with Discord)
+- ✅ DISCORD_RESEARCH_WEBHOOK → #research-reports (verified with Discord)
+- ⚠️ workflow runs in 24h: 89, failed: 2 (polybot)
 
 ---
 *Auto-generated from GitHub by `vault_sync.py`. Edits here are overwritten; write your own notes in a new file.*

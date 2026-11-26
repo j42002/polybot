@@ -1,12 +1,12 @@
 ---
 polybot_auto: true
-updated: 2026-11-26 01:33 UTC
+updated: 2026-11-26 07:58 UTC
 tags: [strategy, verdict/untestable]
 ---
 # Issue 4 — Two-sided market making buy Up and Down for under $1 combined
 
 > [!abstract] Status
-> **stage:3-review, evidence:L1-sourced, verdict:untestable** · [open on GitHub](https://github.com/j42002/polybot/issues/4) · 0 comments
+> **stage:3-review, evidence:L1-sourced, verdict:untestable** · [open on GitHub](https://github.com/j42002/polybot/issues/4) · 2 comments
 
 ## Submission
 ### Submitted by

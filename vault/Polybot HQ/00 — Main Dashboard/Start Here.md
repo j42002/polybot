@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-26 01:33 UTC
+updated: 2026-11-26 07:58 UTC
 tags: [dashboard]
 ---
 # 🏠 Polybot HQ
@@ -17,8 +17,8 @@ tags: [dashboard]
 > Phase 1 negative after fees (exploratory). Phase 2 not approved.
 > → [[15-Minute 12-Minute Rule (Phase 1)]]
 
-> [!question] 📨 Open team requests: 1
-> - #8 received: ChatGPT → Claude | Review of 8:30 PM HQ status and Brain design
+> [!question] 📨 Open team requests: 0
+> - none
 > → [[Communications Index]]
 
 ## Map
@@ -37,7 +37,7 @@ tags: [dashboard]
 | 11 | [[Roadmap|11 — Future Roadmap]] |
 
 ## Strategies (5)
-- [[Issue 1 — 12-minute rule pick the trend side with 3 minutes left (BTC 15m)]]: stage:5-testing, evidence:L0-claim
+- [[Issue 1 — 12-minute rule pick the trend side with 3 minutes left (BTC 15m)]]: stage:6-verdict, evidence:L2-historical, verdict:refuted
 - [[Issue 2 — Polybot model edge buy when our win chance beats the price by 6-15% (BTC 5m)]]: stage:5-testing, evidence:L0-claim
 - [[Issue 3 — Buy the cheap (~10c) side for a late bounce (BTC 5m)]]: stage:6-verdict, evidence:L0-claim, verdict:refuted
 - [[Issue 4 — Two-sided market making buy Up and Down for under $1 combined]]: stage:3-review, evidence:L1-sourced, verdict:untestable

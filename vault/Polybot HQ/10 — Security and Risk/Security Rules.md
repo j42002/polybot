@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-26 01:33 UTC
+updated: 2026-11-26 07:58 UTC
 tags: [security]
 ---
 # 🛡️ Security and Risk
@@ -23,7 +23,10 @@ tags: [security]
 - ✅ account access off (no Polymarket keys in workflows)
 - ✅ 5m model still frozen (MODEL_FROZEN = True)
 - ✅ team relay can't post into the #polybot ticket channel
-- ⚠️ workflow runs in 24h: 63, failed: 2 (polybot)
+- ✅ DISCORD_WEBHOOK → #polybot-moves (tickets only) (verified with Discord)
+- ✅ DISCORD_TEAM_WEBHOOK → #ai-team-chat (verified with Discord)
+- ✅ DISCORD_RESEARCH_WEBHOOK → #research-reports (verified with Discord)
+- ⚠️ workflow runs in 24h: 89, failed: 2 (polybot)
 
 See [[Team Checks (latest)]].
 

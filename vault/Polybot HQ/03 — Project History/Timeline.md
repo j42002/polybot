@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-26 01:33 UTC
+updated: 2026-11-26 07:58 UTC
 tags: [history]
 ---
 # 🗓️ Project Timeline
@@ -9,6 +9,9 @@ Built from the git history (routine data commits left out). Newest first.
 
 ## 2026-11-26
 - `9c67126` vault sync 2026-11-26T01:27Z
+- `c569858` vault sync 2026-11-26T01:33Z
+- `c7d463e` Founder decisions: 12-minute rule refuted (#1), new strategy development paused (#4); logged in vault
+- `7562309` Vault: rebuild after polybot/relay/checks runs (GitHub schedules barely fire); rewrite a note only when its content changed
 
 ## 2026-11-25
 - `d29516c` polybot v1: paper-only BTC 5m scout + grader + hourly Actions schedule
@@ -55,6 +58,7 @@ Built from the git history (routine data commits left out). Newest first.
 - `c851c04` Scoreboard: calibration uses 1 pre-specified check per settled v18+ round (was all checkpoints), labels rounds vs checks, drops the copy-paste prompt (ChatGPT review on #2)
 - `d624b90` Polybot HQ Obsidian vault: vault_sync.py builds vault/Polybot HQ/ (12 folders, dashboard, team profiles, strategies, threads, reports, decisions, lessons, templates, graph colors) from GitHub every 3h; human notes never overwritten; secrets redacted
 - `a068146` Vault: add Discoveries and Wins note + dashboard link
+- `d7a7e3f` Risk Sentinel: verify each Discord webhook's channel with a read-only lookup (tickets → new #polybot-moves, team → #ai-team-chat, reports → #research-reports)
 
 ---
 *Auto-generated from GitHub by `vault_sync.py`. Edits here are overwritten; write your own notes in a new file.*

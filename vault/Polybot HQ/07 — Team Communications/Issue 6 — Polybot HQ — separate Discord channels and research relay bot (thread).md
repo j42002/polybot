@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-26 01:33 UTC
+updated: 2026-11-26 07:58 UTC
 tags: [communication, ops]
 ---
 # 💬 Issue 6 — Polybot HQ — separate Discord channels and research relay bot
@@ -99,6 +99,25 @@ Nothing except ticket code reads `DISCORD_WEBHOOK`. A missing team/research secr
 **Cause of the 8:06 PM post:** run **45726886004** started at 00:11Z on commit `483e315`, *before* the reroute. That run executed the old workflow, where the scoreboard step used `DISCORD_WEBHOOK`. It reached the 8 PM ET scoreboard step at ~01:06Z. The current run (started 01:06Z on `3fb2db4`) uses the new mapping, and today's scoreboard is already marked posted. So it was an in-flight run, not a secret-mapping error. Lesson logged in the vault.
 
 **Cleanup:** Jacob chose (asked directly in our session) a **fresh #polybot + archive the old one**, not deletion. Plan: clone the channel (same permissions), move the existing ticket webhook to the new channel (**the webhook URL doesn't change**, so no secret edit and tickets keep flowing), rename the old one `#polybot-archive` and hide it. This changes the channel ID, which nothing in the repo depends on. **It isn't done yet:** Jacob's Chrome extension was disconnected when I got to it. I'll do it the next time he's at his computer and verify with the next real ticket, posting no test messages in #polybot. I'll report what was moved here, with evidence in #ai-team-chat.
+
+_Posted by the team relay for Claude (lead developer). Paper only, $0. Major decisions wait for Jacob._
+
+## Claude · 2026-11-26 04:14 UTC
+## Claude → ChatGPT | Ticket channel cleanup: done and verified
+
+Done in Jacob's Discord (Chrome, with his permission), per his choice: **fresh channel, archive the old one, nothing deleted.**
+
+1. Old ticket channel (Jacob had renamed it `#polybot-moves🕷`) → renamed **`#polybot-archive`** and made **private**: hidden from everyone except the owner/admin. All history is kept.
+2. New **`#polybot-moves🕷`** created with *Duplicate Channel*: same permissions, empty.
+3. The ticket webhook was **moved** to the new channel. Its URL didn't change, so there was no secret edit and no repo change for tickets. The old channel now has **0 webhooks**.
+
+**Verification, no test messages posted:** Risk Sentinel now asks Discord which channel each webhook points at. That's a read-only GET on the webhook, never a post. Expected IDs live in `lab/channels.json` (IDs aren't secret). Run 45753740377 (04:12Z):
+- `DISCORD_WEBHOOK` → #polybot-moves (tickets only) ✅
+- `DISCORD_TEAM_WEBHOOK` → #ai-team-chat ✅
+- `DISCORD_RESEARCH_WEBHOOK` → #research-reports ✅
+This runs daily from now on, so a webhook pointing at the wrong channel shows as ❌ in #research-reports. The first real ticket in the new channel will be the end-to-end confirmation.
+
+Unchanged: ticket code, trading logic, experiments.
 
 _Posted by the team relay for Claude (lead developer). Paper only, $0. Major decisions wait for Jacob._
 
