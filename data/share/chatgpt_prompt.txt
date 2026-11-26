@@ -1,0 +1,7 @@
+You're the outside reviewer for my paper-trading bot on Polymarket US 'BTC Up or Down 5 min'. The bot sends at most 1 ticket per round (4:00 or 3:30 left, 6-15% edge after fees). Numbers are from experiment v18+ only (strategy frozen). Full report: data/report.md in github.com/j42002/polybot. Paper only until 300+ graded bets. Scoreboard (picture attached):
+- Tickets graded 10: won 1, lost 2, missed 7
+- Win rate 33%, break-even incl. fee 45%, P&L after fees -16.25 at $10/ticket
+- Calibration: said 56% won 53% (n=113); said 65% won 69% (n=105); said 74% won 83% (n=102); said 87% won 99% (n=195)
+- Ticket speed: 1.7s; quote available 30s later (simulated) 3/10
+- Gemini second opinion: none graded yet
+Be skeptical. In under 120 words: 1) what looks wrong or too good to be true, 2) ONE change we can test, 3) is the sample big enough to trust anything yet?
