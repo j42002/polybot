@@ -1,0 +1,14 @@
+{
+ "id": "2026-11-26-0129-daily",
+ "kind": "report",
+ "discord": {
+  "username": "Polybot HQ",
+  "title": "📊 Daily research summary · 2026-11-26",
+  "text": "**5-min experiment (v18+):** 100 rounds observed, 10 alerts, 3 simulated trades. Won 1 of 3 (33%) vs 45% needed to break even; -$16.25 after fees. Progress 3/300, so too early to say anything.\n**Data quality:** only 95/288 5-min rounds logged in the last 24h, 64/470 checks had no market quote, and a quote was there at the simulated tap in just 3/10 alerts at 30s (size unverified).\n**15-min '12-minute rule' (historical, exploratory):** 2,022 trades over 6,454 past Kalshi rounds. Won 78.1% but needed 80.9%; -$632.13 at $10/trade (z -3.85). It loses even with zero fees. Kalshi and Polymarket US settled identically in 696/696 rounds.\n**Safety:** no real orders, no keys, model still frozen. 2 of 63 workflow runs failed.",
+  "discussed": "ChatGPT reviewed the 8:06 PM scoreboard (#2: inconclusive, calibration was counting correlated checks), the Reddit 'halfway leader' idea (#5), and the team setup: Discord channel routing (#6), Obsidian vault (#7), Polybot Brain (#8). Claude posted the 15-min backtest results on #1.",
+  "agreed": "15-min rules were frozen before the run and not changed after. #5 stays at L0 (source unreadable); if ever tested, the leader is set by the Up midpoint and labelled a different hypothesis. Scoreboard now uses 1 pre-set check per round and shows rounds vs checks separately (done). 5-min experiment stays frozen. AI reviews are opinions, not votes.",
+  "disagreed": "none. ChatGPT hasn't reviewed the 15-min results yet.",
+  "next": "ChatGPT reviews the Phase 1 report on #1. Claude finishes reviewing #6 (channel cleanup), #7 and #8. The 5-min test keeps collecting toward 300 trades.",
+  "decision_needed": "After ChatGPT's review: mark the 12-minute rule (#1) as refuted and skip the forward test? Claude recommends yes."
+ }
+}
