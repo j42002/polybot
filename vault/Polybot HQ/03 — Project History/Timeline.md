@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-26 13:07 UTC
+updated: 2026-11-26 18:44 UTC
 tags: [history]
 ---
 # 🗓️ Project Timeline
@@ -17,6 +17,12 @@ Built from the git history (routine data commits left out). Newest first.
 - `366a19f` vault sync 2026-11-26T08:42Z
 - `ebb2a5b` vault sync 2026-11-26T09:24Z
 - `d8bd25d` vault sync 2026-11-26T12:10Z
+- `974adbc` vault sync 2026-11-26T13:07Z
+- `c3352fe` maker15: start on merge and requeue itself (GitHub cron rarely fires here)
+- `11e41f9` maker15 data 2026-11-26T15:10Z
+- `595a253` maker15 data 2026-11-26T16:05Z
+- `2a0210a` maker15 data 2026-11-26T17:01Z
+- `3b45a04` maker15 data 2026-11-26T17:56Z
 
 ## 2026-11-25
 - `d29516c` polybot v1: paper-only BTC 5m scout + grader + hourly Actions schedule
