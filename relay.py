@@ -84,7 +84,9 @@ def save_state(s):
 def is_chatgpt(c):
     login = (c.get("user") or {}).get("login", "")
     body = c.get("body") or ""
-    return not login.endswith("[bot]") and bool(CHATGPT_RE.search(body)) and not CLAUDE_RE.search(body)
+    # Only Jacob's account (ChatGPT posts through it). The repo is public, so anyone can comment: a stranger
+    # copying the "ChatGPT →" header must not enter the queue or use up the daily cap / 3-round limit.
+    return login == "j42002" and bool(CHATGPT_RE.search(body)) and not CLAUDE_RE.search(body)
 
 
 def is_claude(c):
