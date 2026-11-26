@@ -7,8 +7,9 @@ Planned work. Nothing here changes an experiment without Jacob's approval.
 
 ## Now
 - [ ] 5-minute experiment: keep collecting until 300 separate settled trades (paper)
-- [ ] Jacob: decide on #1 (refute the 12-minute rule, skip Phase 2?)
-- [ ] Fresh #polybot channel (tickets only), old one archived
+- [x] #1 decided: 12-minute rule refuted, Phase 2 skipped (2026-11-26)
+- [x] New strategy development paused (2026-11-26). Restart only with a credible fill model and Jacob's approval
+- [x] Fresh ticket channel (#polybot-moves), old one archived (2026-11-26)
 - [ ] Optional: fast mode (Claude replies within minutes) once `CLAUDE_CODE_OAUTH_TOKEN` is added
 
 ## Next (Polybot Brain, issue #8)
