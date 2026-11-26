@@ -1,0 +1,48 @@
+name: vault sync
+# Rebuilds the Polybot HQ Obsidian vault (vault/Polybot HQ/) from the repo + public issues. $0, one-way.
+# Only notes marked `polybot_auto: true` are rewritten; human notes are never touched. Commits only vault/.
+on:
+  schedule:
+    - cron: "41 */3 * * *"
+  push:
+    branches: [main]
+    paths: ["vault_sync.py", ".github/workflows/vault.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+  issues: read
+concurrency:
+  group: vault
+  cancel-in-progress: false
+jobs:
+  vault:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests==2.32.3
+      - name: build vault
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python vault_sync.py
+      - name: commit vault/ only
+        run: |
+          git config user.name "polybot-vault"
+          git config user.email "polybot@users.noreply.github.com"
+          rm -rf /tmp/vault && cp -r vault /tmp/vault
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            rm -rf vault && cp -r /tmp/vault vault
+            git add -A vault/
+            git diff --cached --quiet && exit 0
+            git commit -q -m "vault sync $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push -q origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1

@@ -21,14 +21,21 @@ browser when he asks). Each has a paste-ready prompt in `lab/prompts/`.
 
 ## Team relay (no copy-paste)
 
-- `relay.py` + the *team relay* workflow announce every ChatGPT comment once in #polybot (📥).
-- Claude checks GitHub every 3 hours (scheduled task), replies on the issue as "Claude → ChatGPT" and sends a Discord
-  summary (🧠): discussed, agreed, disagreed, next, decision needed (⚠️).
-- A daily research summary (📊) goes to #polybot at 8:30 PM ET.
-- Guards: each comment is announced once and answered at most once; max 8 Claude replies a day; after 3 exchanges on
-  one issue in 24h Claude waits for Jacob; bot comments can't trigger workflows, so there are no reply loops.
+- ChatGPT posts on GitHub (comments, or new issues). Within seconds the *team relay* workflow puts ONE status card per
+  request in Discord **#ai-team-chat** and adds 👀 to the request on GitHub. The card is edited in place as it moves:
+  📨 Received (delivered, not yet reviewed) → 🧠 Under review → ✅ Reviewed (links Claude's reply, shows response time)
+  or ⚠️ Blocked (reason + next step). Ages use Discord timestamps, so "received 2 hours ago" stays current.
+- Claude reviews **hourly** (scheduled task; the platform minimum is 1 hour), or **within minutes** in fast mode
+  (`claude-fast.yml`, runs on Jacob's Claude subscription once he adds `CLAUDE_CODE_OAUTH_TOKEN`). Fast mode can only
+  commit reply/status files that pass `relay.py validate`; it can't touch code, data, rules or workflows.
+- Channels: **#polybot** = tickets only · **#ai-team-chat** = team conversation + status cards ·
+  **#research-reports** = scoreboard, daily summary (8:30 PM ET), Data Auditor / Quant Analyst / Risk Sentinel.
+  A missing team/report webhook means the message waits; it never falls back to #polybot.
+- Guards: one card and at most one reply per request; max 12 Claude replies a day; after 3 exchanges on one issue in
+  24h Claude waits for Jacob; bot comments can't trigger workflows, so there are no reply loops.
 - ChatGPT's comments show as j42002 (Jacob's account), so no experiment, rule or stage changes from a comment alone:
   Jacob confirms those with Claude directly.
+- The Obsidian vault `vault/Polybot HQ/` is rebuilt from GitHub every 3 hours (`vault_sync.py`, one-way, human notes kept).
 
 ## The database
 
