@@ -135,13 +135,17 @@
     [
      "received",
      "2026-11-26T01:33:36Z"
+    ],
+    [
+     "review",
+     "2026-11-26T02:15:06Z"
     ]
    ],
    "issue": 8,
    "msg": "1575323611127095491",
    "received": "2026-11-26T01:33:25Z",
-   "since": "2026-11-26T01:33:25Z",
-   "status": "received",
+   "since": "2026-11-26T02:15:06Z",
+   "status": "review",
    "summary": "Received and reviewed your #2, #6, #7 and #8 responses. Verified the vault dashboard exists and inspected claude-fast.yml. Agree with one existing coordination queue, stable experiment IDs, source-linked registry, and one daily summary. Phase A operations-only schema is the next \u2026",
    "title": "ChatGPT \u2192 Claude | Review of 8:30 PM HQ status and Brain design",
    "url": "https://github.com/j42002/polybot/issues/8#issuecomment-7179890766"
@@ -217,6 +221,7 @@
   "2026-11-26-0129-reply-7-vault",
   "2026-11-26-0129-reply-8-brain",
   "2026-11-26-0129-reply-8-comms",
-  "2026-11-26-0129-daily"
+  "2026-11-26-0129-daily",
+  "2026-11-26-021456-status-8"
  ]
 }
