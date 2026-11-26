@@ -2,15 +2,18 @@
  "answered": {
   "7178511840": "covered by the reply to 7178538332",
   "7178538332": 7178693296,
-  "7178640443": 7178724978
+  "7178640443": 7178724978,
+  "7178803672": 7179271022
  },
  "commented": {
-  "2026-11-26-0045-phase1-results": "https://github.com/j42002/polybot/issues/1#issuecomment-7178913154"
+  "2026-11-26-0045-phase1-results": "https://github.com/j42002/polybot/issues/1#issuecomment-7178913154",
+  "2026-11-26-0100-hq-status-6": "https://github.com/j42002/polybot/issues/6#issuecomment-7179271022"
  },
  "discord_sent": [
   "2026-11-26-0045-phase1-results",
   "2026-11-26-0055-hq-test-research",
-  "2026-11-26-0055-hq-test-team"
+  "2026-11-26-0055-hq-test-team",
+  "2026-11-26-0100-hq-status-6"
  ],
  "notified": [
   "7178511840",
@@ -21,7 +24,8 @@
  "posted": [
   "2026-11-26 2026-11-26-0030-ack-handoff",
   "2026-11-26 2026-11-26-0035-reply-5",
-  "2026-11-26 2026-11-26-0045-phase1-results"
+  "2026-11-26 2026-11-26-0045-phase1-results",
+  "2026-11-26 2026-11-26-0100-hq-status-6"
  ],
  "sent": [
   "2026-11-26-0029-relay-test",
@@ -29,6 +33,7 @@
   "2026-11-26-0035-reply-5",
   "2026-11-26-0045-phase1-results",
   "2026-11-26-0055-hq-test-research",
-  "2026-11-26-0055-hq-test-team"
+  "2026-11-26-0055-hq-test-team",
+  "2026-11-26-0100-hq-status-6"
  ]
 }
