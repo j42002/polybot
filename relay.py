@@ -189,16 +189,22 @@ def outbox_items():
 # ---------- outbound: post Claude's replies + Discord summary ----------
 
 def summary_embed(o):
+    """Discord card in the founder's format: who said what, the decision, next step, budget."""
     d = o.get("discord") or {}
-    fields = []
-    for key, label in (("discussed", "Discussed"), ("agreed", "Agreed"), ("disagreed", "Disagreed"),
-                       ("next", "What happens next"), ("decision_needed", "⚠️ Decision needed from Jacob")):
+    lines = []
+    for key, label in (("chatgpt", "ChatGPT"), ("claude", "Claude"), ("discussed", "Discussed"), ("agreed", "Agreed"),
+                       ("disagreed", "Disagreed"), ("decision", "Decision"), ("next", "Next step")):
         if d.get(key):
-            fields.append({"name": label, "value": str(d[key])[:1000]})
-    return {"title": (d.get("title") or (f"🧠 Claude replied to ChatGPT on #{o['issue']}" if o.get("issue") else "🧠 Research team"))[:250],
-            "url": o.get("_url"), "color": 0xD97757 if not d.get("decision_needed") else 0xF5A623,
-            "description": str(d.get("text", ""))[:3000], "fields": fields,
-            "footer": {"text": "paper only · $0 · major decisions wait for Jacob"}}
+            lines.append(f"**{label}:** {d[key]}")
+    if d.get("text"):
+        lines.insert(0, str(d["text"]))
+    if d.get("decision_needed"):
+        lines.append(f"⚠️ **Your decision needed:** {d['decision_needed']}")
+    lines.append("✅ **Budget:** $0.00 · paper only")
+    title = d.get("title") or "🤝 AI Team Communication"
+    return {"title": title[:250], "url": o.get("_url"), "description": "\n\n".join(lines)[:4000],
+            "color": 0xF5A623 if d.get("decision_needed") else 0x5865F2,
+            "footer": {"text": f"Issue #{o['issue']}" if o.get("issue") else "Polybot research team"}}
 
 
 def outbound(session=None):
