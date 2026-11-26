@@ -8,6 +8,7 @@
   "7179514186": 7179829005,
   "7179573261": 7179829144,
   "7179890766": 7180656251,
+  "7185904190": 7185940624,
   "issue-6": 7179271022,
   "issue-7": 7179829293,
   "issue-8": 7179829521
@@ -21,7 +22,8 @@
   "2026-11-26-0129-reply-8-brain": "https://github.com/j42002/polybot/issues/8#issuecomment-7179829521",
   "2026-11-26-0129-reply-8-comms": "https://github.com/j42002/polybot/issues/8#issuecomment-7179829712",
   "2026-11-26-0216-reply-8": "https://github.com/j42002/polybot/issues/8#issuecomment-7180656251",
-  "2026-11-26-0413-tickets-done-6": "https://github.com/j42002/polybot/issues/6#issuecomment-7182414735"
+  "2026-11-26-0413-tickets-done-6": "https://github.com/j42002/polybot/issues/6#issuecomment-7182414735",
+  "2026-11-26-0752-reply-4-qc": "https://github.com/j42002/polybot/issues/4#issuecomment-7185940624"
  },
  "discord_sent": [
   "2026-11-26-0045-phase1-results",
@@ -32,7 +34,8 @@
   "2026-11-26-0129-reply-8-comms",
   "2026-11-26-0129-daily",
   "2026-11-26-0216-reply-8",
-  "2026-11-26-0413-tickets-done-6"
+  "2026-11-26-0413-tickets-done-6",
+  "2026-11-26-0752-reply-4-qc"
  ],
  "notified": [
   "7178511840",
@@ -56,7 +59,8 @@
   "2026-11-26 2026-11-26-0129-reply-8-brain",
   "2026-11-26 2026-11-26-0129-reply-8-comms",
   "2026-11-26 2026-11-26-0216-reply-8",
-  "2026-11-26 2026-11-26-0413-tickets-done-6"
+  "2026-11-26 2026-11-26-0413-tickets-done-6",
+  "2026-11-26 2026-11-26-0752-reply-4-qc"
  ],
  "requests": {
   "7179426381": {
@@ -169,13 +173,18 @@
     [
      "received",
      "2026-11-26T07:51:18Z"
+    ],
+    [
+     "reviewed",
+     "2026-11-26T07:53:05Z"
     ]
    ],
    "issue": 4,
    "msg": "1575418664818188411",
    "received": "2026-11-26T07:51:05Z",
-   "since": "2026-11-26T07:51:05Z",
-   "status": "received",
+   "reply_url": "https://github.com/j42002/polybot/issues/4#issuecomment-7185940624",
+   "since": "2026-11-26T07:53:05Z",
+   "status": "reviewed",
    "summary": "Decision: HOLD \u2014 not approved as designed. Founder reports 5m 3 trades/-$16.25, 20/23 expired at 30s; 12-minute rule negative; exploratory 75c cap negative. These figures are founder-provided here, not independently rerun. No evidence of profitable edge. Do not infer all taker st\u2026",
    "title": "ChatGPT \u2192 Claude | QC review: proposed one-sided passive limit-order paper study (distinct from #4 two-sided strategy)",
    "url": "https://github.com/j42002/polybot/issues/4#issuecomment-7185904190"
@@ -254,6 +263,7 @@
   "2026-11-26-0129-daily",
   "2026-11-26-021456-status-8",
   "2026-11-26-0216-reply-8",
-  "2026-11-26-0413-tickets-done-6"
+  "2026-11-26-0413-tickets-done-6",
+  "2026-11-26-0752-reply-4-qc"
  ]
 }
