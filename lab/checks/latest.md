@@ -1,4 +1,4 @@
-# Team checks · 2026-11-26 00:34 UTC
+# Team checks · 2026-11-26 00:35 UTC
 
 Deterministic Python checks, $0, read-only.
 
@@ -30,4 +30,4 @@ Deterministic Python checks, $0, read-only.
 - ✅ account access off (no Polymarket keys in workflows)
 - ✅ 5m model still frozen (MODEL_FROZEN = True)
 - ✅ team relay can't post into the #polybot ticket channel
-- ⚠️ workflow runs in 24h: 57, failed: 2 (polybot)
+- ⚠️ workflow runs in 24h: 60, failed: 2 (polybot)
