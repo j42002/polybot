@@ -10,6 +10,7 @@ successful run. Never changes experiments, data or settings.
 """
 import csv
 import math
+import json
 import os
 import re
 import subprocess
@@ -159,6 +160,31 @@ def tracked_files():
     return [f for f in out if not f.startswith("data/") or f.endswith((".md", ".json"))]
 
 
+def webhook_routing(session=None):
+    """Ask Discord which channel each webhook points at. GET on a webhook URL only reads its info; it never posts.
+    Expected channel IDs live in lab/channels.json (IDs aren't secret). The URLs are never printed."""
+    try:
+        want = json.load(open(os.path.join("lab", "channels.json"), encoding="utf-8"))
+    except Exception:
+        return [("warn", "webhook routing not checked (lab/channels.json missing)")]
+    s, res = session or requests, []
+    for env, exp in want.items():
+        if env.startswith("_"):
+            continue
+        url = os.getenv(env, "")
+        if not url:
+            res.append(("warn", f"{exp['channel']}: {env} not available to this check"))
+            continue
+        try:
+            got = str(s.get(url, timeout=10).json().get("channel_id", ""))
+        except Exception as e:
+            res.append(("warn", f"{exp['channel']}: couldn't read webhook ({e.__class__.__name__})"))
+            continue
+        res.append(("ok", f"{env} → #{exp['channel']} (verified with Discord)") if got == exp["id"] else
+                   ("fail", f"{env} points at the WRONG channel (id {got or '?'}, expected #{exp['channel']})"))
+    return res
+
+
 def risk_sentinel(session=None):
     out, worst = [], "ok"
 
@@ -206,6 +232,8 @@ def risk_sentinel(session=None):
     except Exception:
         leak = False
     flag("ok" if not leak else "fail", "team relay can't post into the #polybot ticket channel" if not leak else "relay reads the ticket webhook")
+    for level, msg in webhook_routing(session):
+        flag(level, msg)
     if TOKEN:
         try:
             since = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")

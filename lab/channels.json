@@ -1,0 +1,6 @@
+{
+ "_note": "Discord channel IDs (not secret). Risk Sentinel asks Discord which channel each webhook points at (a read, never a post) and flags any mismatch.",
+ "DISCORD_WEBHOOK": {"channel": "polybot-moves (tickets only)", "id": "1575362956370251857"},
+ "DISCORD_TEAM_WEBHOOK": {"channel": "ai-team-chat", "id": "1575310000769998978"},
+ "DISCORD_RESEARCH_WEBHOOK": {"channel": "research-reports", "id": "1575310074350403584"}
+}
