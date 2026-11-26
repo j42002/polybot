@@ -2,6 +2,9 @@ name: maker15 (limit-order paper test, BTC 15m)
 # Paper only, never trades, no keys. Separate from polybot (5m) and backtest15: own concurrency group,
 # writes only data/maker15/. Rules frozen in data/maker15/PREREG.md.
 on:
+  push:
+    branches: [main]
+    paths: ["maker15.py", ".github/workflows/maker15.yml"]
   schedule:
     - cron: "5,25,45 * * * *"
   workflow_dispatch:
@@ -14,6 +17,7 @@ on:
         default: "1000"
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: maker15
   cancel-in-progress: false
@@ -34,6 +38,7 @@ jobs:
       - name: offline self-test
         run: python maker15.py selftest
       - name: live forward test (logs simulated orders, 55 min)
+        id: live
         if: ${{ github.event.inputs.mode != 'replay' }}
         run: python maker15.py live
         env:
@@ -60,3 +65,8 @@ jobs:
             sleep $((i * 3))
           done
           exit 1
+      - name: queue the next run (GitHub's cron here fires rarely; polybot.yml does the same)
+        if: ${{ always() && steps.live.outcome == 'success' }}   # a crashed run doesn't requeue, so no fast failure loop
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run maker15.yml --repo ${{ github.repository }} --ref main -f mode=live
