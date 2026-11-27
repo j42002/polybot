@@ -1,12 +1,12 @@
 name: team checks
-# Data Auditor, Quant Analyst, Risk Sentinel: free deterministic checks, read-only, $0.
+# Data Auditor, Quant Analyst, Risk Sentinel + the specialist agents (hq_agents.py): free deterministic checks, read-only, $0.
 # Posts to #research-reports (or #ai-team-chat), never #polybot. Writes only lab/checks/.
 on:
   schedule:
     - cron: "11 1 * * *"
   push:
     branches: [main]
-    paths: ["team_checks.py", ".github/workflows/team-checks.yml"]
+    paths: ["team_checks.py", "hq_agents.py", "blueprint.py", ".github/workflows/team-checks.yml"]
   workflow_dispatch:
 permissions:
   contents: write
@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install requests==2.32.3
+      - run: pip install requests==2.32.3 pillow==12.0.0
       - name: run checks
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -33,15 +33,26 @@ jobs:
           DISCORD_TEAM_WEBHOOK: ${{ secrets.DISCORD_TEAM_WEBHOOK }}
           DISCORD_RESEARCH_WEBHOOK: ${{ secrets.DISCORD_RESEARCH_WEBHOOK }}
         run: python team_checks.py
+      - name: specialist agents (self-tests with planted failures, then checks on real data; one Discord card)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISCORD_TEAM_WEBHOOK: ${{ secrets.DISCORD_TEAM_WEBHOOK }}
+          DISCORD_RESEARCH_WEBHOOK: ${{ secrets.DISCORD_RESEARCH_WEBHOOK }}
+        run: |
+          python hq_agents.py test
+          python hq_agents.py
+          python blueprint.py
       - name: commit lab/checks only
         run: |
           git config user.name "polybot-checks"
           git config user.email "polybot@users.noreply.github.com"
           cp lab/checks/latest.md /tmp/latest.md
+          rm -rf /tmp/agents /tmp/templates && cp -r lab/agents /tmp/agents && cp -r lab/templates /tmp/templates
           for i in 1 2 3 4 5; do
             git fetch -q origin main && git reset -q --hard origin/main
-            mkdir -p lab/checks && cp /tmp/latest.md lab/checks/latest.md
-            git add lab/checks/latest.md
+            mkdir -p lab/checks lab/agents lab/templates && cp /tmp/latest.md lab/checks/latest.md
+            cp /tmp/agents/* lab/agents/ && cp /tmp/templates/* lab/templates/
+            git add lab/checks/latest.md lab/agents lab/templates
             git diff --cached --quiet && exit 0
             git commit -q -m "team checks $(date -u +%Y-%m-%dT%H:%MZ)"
             git push -q origin HEAD:main && exit 0
