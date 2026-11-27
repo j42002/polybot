@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-27 09:37 UTC
+updated: 2026-11-27 22:06 UTC
 tags: [security]
 ---
 # 🛡️ Security and Risk
@@ -17,7 +17,16 @@ tags: [security]
 - #polybot carries tickets only.
 
 ## Risk Sentinel (latest automatic check)
-
+- ✅ no credentials committed to the repo
+- ✅ no code that places real orders
+- ✅ no paid AI API keys used by any workflow ($0)
+- ✅ account access off (no Polymarket keys in workflows)
+- ✅ 5m model still frozen (MODEL_FROZEN = True)
+- ✅ team relay can't post into the #polybot ticket channel
+- ✅ DISCORD_WEBHOOK → #polybot-moves (tickets only) (verified with Discord)
+- ✅ DISCORD_TEAM_WEBHOOK → #ai-team-chat (verified with Discord)
+- ✅ DISCORD_RESEARCH_WEBHOOK → #research-reports (verified with Discord)
+- ⚠️ workflow runs in 24h: 100, failed: 1 (team relay)
 
 See [[Team Checks (latest)]].
 
