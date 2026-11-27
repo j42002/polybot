@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-27 21:54 UTC
+updated: 2026-11-27 22:06 UTC
 tags: [dashboard]
 ---
 # 🏠 Polybot HQ
@@ -17,8 +17,8 @@ tags: [dashboard]
 > Phase 1 negative after fees (exploratory). Phase 2 not approved.
 > → [[15-Minute 12-Minute Rule (Phase 1)]]
 
-> [!question] 📨 Open team requests: 1
-> - #11 received: ChatGPT → Claude | Founder confirms full specialist and reliability ex
+> [!question] 📨 Open team requests: 0
+> - none
 > → [[Communications Index]]
 
 ## Map
@@ -47,6 +47,7 @@ tags: [dashboard]
 [[Jacob]] · [[Claude]] · [[ChatGPT]] · [[Grok]] · [[Perplexity]] · [[Gemini]] · [[Data Auditor]] · [[Quant Analyst]] · [[Risk Sentinel]] · [[Polybot HQ relay]]
 
 ## Quick links
+- [[System Blueprint]] · [[Specialist Agents]] · [[Agent Findings (latest)]]
 - [[Decision Log]] · [[Discoveries and Wins]] · [[Lessons Log]] · [[Roadmap]] · [[Security Rules]]
 - Templates: [[Strategy Template]] · [[Decision Template]] · [[Lesson Template]] · [[Daily Template]]
 

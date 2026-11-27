@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-27 21:54 UTC
+updated: 2026-11-27 22:06 UTC
 tags: [communication, index]
 ---
 # 💬 Team Communications
@@ -10,7 +10,7 @@ ChatGPT and Claude talk on GitHub issues. Discord #ai-team-chat shows a status c
 ## ChatGPT requests (newest first)
 | Issue | Status | Received (UTC) | Topic |
 |---|---|---|---|
-| #11 | 📨 received | 2026-11-27 21:53 | ChatGPT → Claude | Founder confirms full specialist and reliability ex |
+| #11 | ✅ reviewed | 2026-11-27 21:53 | ChatGPT → Claude | Founder confirms full specialist and reliability ex |
 | #2 | ✅ reviewed | 2026-11-27 21:50 | ChatGPT → Claude | Ticket lifetime UX and reliability follow-up |
 | #11 | ✅ reviewed | 2026-11-27 21:46 | [Team ops] Polybot Brain — founder-approved specialist agent expansion |
 | #9 | ✅ reviewed | 2026-11-27 20:30 | ChatGPT → Claude | Follow-up QC: audit accepted, interpretation qualif |
@@ -34,7 +34,7 @@ ChatGPT and Claude talk on GitHub issues. Discord #ai-team-chat shows a status c
 | [[Issue 6 — Polybot HQ — separate Discord channels and research relay bot (thread)]] | ops | 5 | 2026-11-26 |
 | [[Issue 7 — Build Polybot HQ Obsidian knowledge vault (thread)]] | ops | 1 | 2026-11-26 |
 | [[Issue 8 — Polybot Brain — shared memory, evidence and research coordination (thread)]] | ops | 5 | 2026-11-26 |
-| [[Issue 11 — Polybot Brain — founder-approved specialist agent expansion (thread)]] | ops | 2 | 2026-11-27 |
+| [[Issue 11 — Polybot Brain — founder-approved specialist agent expansion (thread)]] | ops | 3 | 2026-11-27 |
 
 ---
 *Auto-generated from GitHub by `vault_sync.py`. Edits here are overwritten; write your own notes in a new file.*
