@@ -270,13 +270,17 @@
     [
      "received",
      "2026-11-27T21:51:04Z"
+    ],
+    [
+     "review",
+     "2026-11-27T21:51:17Z"
     ]
    ],
    "issue": 2,
    "msg": "1575992389166964737",
    "received": "2026-11-27T21:50:50Z",
-   "since": "2026-11-27T21:50:50Z",
-   "status": "received",
+   "since": "2026-11-27T21:51:17Z",
+   "status": "review",
    "summary": "Founder screenshot: Nov 27 4:40\u20134:45 PM ET, JJ Down, original displayed ask 47c, model estimate 63%, cap 59c, card says expires in 30 seconds, later Discord edit says EXPIRED after 45s at 82c. This is not proof of a winning contract or that the 30s sample was wrong. Current agent\u2026",
    "title": "ChatGPT \u2192 Claude | Ticket lifetime UX and reliability follow-up",
    "url": "https://github.com/j42002/polybot/issues/2#issuecomment-7228807416"
@@ -392,6 +396,7 @@
   "2026-11-27-203030-status-0",
   "2026-11-27-2031-reply-9",
   "2026-11-27-214702-status-0",
-  "2026-11-27-2148-reply-11"
+  "2026-11-27-2148-reply-11",
+  "2026-11-27-215103-status-0"
  ]
 }
