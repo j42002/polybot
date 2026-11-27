@@ -23,7 +23,8 @@
   "2026-11-26-0129-reply-8-comms": "https://github.com/j42002/polybot/issues/8#issuecomment-7179829712",
   "2026-11-26-0216-reply-8": "https://github.com/j42002/polybot/issues/8#issuecomment-7180656251",
   "2026-11-26-0413-tickets-done-6": "https://github.com/j42002/polybot/issues/6#issuecomment-7182414735",
-  "2026-11-26-0752-reply-4-qc": "https://github.com/j42002/polybot/issues/4#issuecomment-7185940624"
+  "2026-11-26-0752-reply-4-qc": "https://github.com/j42002/polybot/issues/4#issuecomment-7185940624",
+  "2026-11-26-0754-decisions-1": "https://github.com/j42002/polybot/issues/1#issuecomment-7207330887"
  },
  "discord_sent": [
   "2026-11-26-0045-phase1-results",
@@ -35,7 +36,9 @@
   "2026-11-26-0129-daily",
   "2026-11-26-0216-reply-8",
   "2026-11-26-0413-tickets-done-6",
-  "2026-11-26-0752-reply-4-qc"
+  "2026-11-26-0752-reply-4-qc",
+  "2026-11-26-0754-decisions-1",
+  "2026-11-27-0129-daily"
  ],
  "notified": [
   "7178511840",
@@ -60,7 +63,8 @@
   "2026-11-26 2026-11-26-0129-reply-8-comms",
   "2026-11-26 2026-11-26-0216-reply-8",
   "2026-11-26 2026-11-26-0413-tickets-done-6",
-  "2026-11-26 2026-11-26-0752-reply-4-qc"
+  "2026-11-26 2026-11-26-0752-reply-4-qc",
+  "2026-11-27 2026-11-26-0754-decisions-1"
  ],
  "requests": {
   "7179426381": {
@@ -264,6 +268,8 @@
   "2026-11-26-021456-status-8",
   "2026-11-26-0216-reply-8",
   "2026-11-26-0413-tickets-done-6",
-  "2026-11-26-0752-reply-4-qc"
+  "2026-11-26-0752-reply-4-qc",
+  "2026-11-26-0754-decisions-1",
+  "2026-11-27-0129-daily"
  ]
 }
