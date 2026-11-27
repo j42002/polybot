@@ -158,6 +158,9 @@ def load():
     d["report"] = read(os.path.join("data", "report.md"))
     d["r15"] = read(os.path.join("data", "15m", "report.md"))
     d["prereg"] = read(os.path.join("data", "15m", "PREREG.md"))
+    d["m15"] = read(os.path.join("data", "maker15", "report.md"))
+    d["m15pre"] = read(os.path.join("data", "maker15", "PREREG.md"))
+    d["m15audit"] = read(os.path.join("data", "maker15_audit", "audit.md"))
     d["checks"] = read(os.path.join("lab", "checks", "latest.md"))
     d["readme"] = read(os.path.join("lab", "README.md"))
     d["relay"] = json.loads(read(os.path.join("lab", "relay_state.json"), "{}") or "{}")
@@ -279,7 +282,7 @@ def thread_notes(d):
 def experiment_notes(d):
     rr = section(d["report"], "Research report: experiment v18+ only")
     upd = re.search(r"Updated (.+?UTC)", d["report"])
-    prog = re.search(r"Progress: (\d+)/300", d["report"])
+    prog = re.search(r"(?:Progress:|research target) (\d+)/300", d["report"])
     write(f"{F['05']}/5-Minute Experiment v18.md",
           "> [!success] Running · paper only · model frozen\n"
           f"> Progress **{prog.group(1) if prog else '?'} / 300** separate settled simulated trades. Nothing is judged before 300.\n\n"
@@ -300,9 +303,28 @@ def experiment_notes(d):
     write(f"{F['01']}/Experiment Registry.md",
           "| Experiment | Status | Evidence | Rules |\n|---|---|---|---|\n"
           f"| [[5-Minute Experiment v18]] | running, {prog.group(1) if prog else '?'}/300 | too early | model frozen, v18+ only |\n"
-          "| [[15-Minute 12-Minute Rule (Phase 1)]] | finished: negative | L2-negative (exploratory) | PREREG frozen 2026-11-25 |\n\n"
+          "| [[15-Minute 12-Minute Rule (Phase 1)]] | refuted (Jacob, 2026-11-26) | L2-negative (exploratory) | PREREG frozen 2026-11-25 |\n"
+          "| [[15-Minute Maker Test (paper)]] | running, paper | screening (100 fills) | PREREG frozen 2026-11-26, PR #9 |\n\n"
           "Every experiment is pre-registered; changing rules after results = a new, separately labelled analysis.",
           tags=["brain", "experiment", "index"], title="🧪 Experiment Registry")
+
+
+def maker_notes(d):
+    if not d["m15"]:
+        return
+    head = re.search(r"\*\*Verdict: (.+?)\*\*", d["m15"])
+    write(f"{F['05']}/15-Minute Maker Test (paper).md",
+          "> [!warning] Running · paper only · rules frozen (data/maker15/PREREG.md)\n"
+          f"> {head.group(1) if head else 'see report'} The 100-fill verdict is a **screening** rule, not proof.\n\n"
+          "## What it tests\nA resting buy limit 2c below the ask on the 12-minute AGREE side (Kalshi BTC 15m). "
+          "Fills only when later public trades print strictly through the limit for the full size.\n\n"
+          "## Known caveats (QC review, PR #9)\n- **Adverse selection:** losing orders always fill; many winners never do. "
+          "Unfilled hypothetical wins are not earned P&L.\n- Same signal as the refuted 12-minute rule (2,022 historical trades, negative). "
+          "Compare live results with the taker counterfactual in the audit.\n- Few independent days so far.\n\n"
+          f"## Latest report\n{d['m15']}\n\nAudit: [[Maker Test QC Audit]] · Merged via PR #9 (2026-11-26).",
+          tags=["experiment", "experiment/maker15", "status/running"], title="🪤 15-Minute Maker (limit-order) Test")
+    write(f"{F['06']}/Maker Test QC Audit.md", d["m15audit"] or "_audit not run yet_", tags=["results", "experiment/maker15", "audit"],
+          title="🔍 Maker Test QC Audit")
 
 
 def result_notes(d):
@@ -331,7 +353,7 @@ def history_notes(d):
 
 def daily_note(d):
     upd = re.search(r"\*\*Data:\*\*(.+)", d["report"])
-    prog = re.search(r"Progress: (\d+)/300", d["report"])
+    prog = re.search(r"(?:Progress:|research target) (\d+)/300", d["report"])
     pnl = re.search(r"Simulated profit after fees:\*\* (.+)", d["report"])
     reqs = d["relay"].get("requests", {})
     today_reqs = [r for r in reqs.values() if r["received"].startswith(TODAY)]
@@ -378,7 +400,7 @@ def security_notes(d):
 
 
 def dashboard(d):
-    prog = re.search(r"Progress: (\d+)/300", d["report"])
+    prog = re.search(r"(?:Progress:|research target) (\d+)/300", d["report"])
     pnl = re.search(r"Simulated profit after fees:\*\* (.+?) ·", d["report"])
     reqs = d["relay"].get("requests", {})
     open_reqs = [r for r in reqs.values() if r["status"] != "reviewed"]
@@ -514,6 +536,7 @@ def main():
     brain_notes(d)
     experiment_notes(d)
     result_notes(d)
+    maker_notes(d)
     history_notes(d)
     security_notes(d)
     if d["gh_ok"]:

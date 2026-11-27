@@ -13,6 +13,9 @@ What the team found out and what it shipped. A discovery is a measured fact, not
 | 2026-11-25 | Polymarket /book is reliable when /bbo returns 404 | measured | [[Lessons Log]] |
 | 2026-11-26 | Frozen 5m model slightly sharper than the market price (Brier 0.138 vs 0.143, 100 rounds) | early, not evidence of profit | [[5-Minute Research Report]] |
 
+| 2026-11-27 | 5m model picks the winner on 63% of alerts vs 52% break-even at the alert price, but the edge is priced in within 5-30s | measured, 89 alerts, not tradeable at human speed | [[5-Minute Research Report]] |
+| 2026-11-27 | Maker test profit so far comes from the signal, not the limit price: the same 53 signals as taker buys made more (+74.82 vs +52.70) | exploratory, 2 days | [[Maker Test QC Audit]] |
+
 ## Wins (shipped)
 | Date | What | Why it matters |
 |---|---|---|
