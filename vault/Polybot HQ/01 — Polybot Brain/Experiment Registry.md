@@ -1,13 +1,13 @@
 ---
 polybot_auto: true
-updated: 2026-11-27 22:18 UTC
+updated: 2026-11-27 23:13 UTC
 tags: [brain, experiment, index]
 ---
 # 🧪 Experiment Registry
 
 | Experiment | Status | Evidence | Rules |
 |---|---|---|---|
-| [[5-Minute Experiment v18]] | running, 22/300 | too early | model frozen, v18+ only |
+| [[5-Minute Experiment v18]] | running, 23/300 | too early | model frozen, v18+ only |
 | [[15-Minute 12-Minute Rule (Phase 1)]] | refuted (Jacob, 2026-11-26) | L2-negative (exploratory) | PREREG frozen 2026-11-25 |
 | [[15-Minute Maker Test (paper)]] | running, paper | screening (100 fills) | PREREG frozen 2026-11-26, PR #9 |
 
