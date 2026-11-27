@@ -1,0 +1,14 @@
+{
+ "id": "2026-11-27-0129-daily",
+ "kind": "report",
+ "discord": {
+  "username": "Polybot HQ",
+  "title": "📊 Daily research summary · 2026-11-27",
+  "text": "**5-min experiment (v18+):** 382 rounds observed, 60 alerts, 9 simulated trades. Won 33% vs 47% needed to break even; -$28.18 after fees (max drawdown -$51.99). Progress 9/300: too early to say anything.\n**Fills:** a quote was still there at the simulated tap in only 9 of 59 alerts at 30s (14/59 at 5s, size unverified).\n**15-min maker paper test (new, Kalshi):** 19 orders, 13 filled. Won 76.9% vs 68.4% break-even, +$20.19 after fees. 13/100 fills, far too small to mean anything. Warning sign: the 6 orders that never filled would all have won, which is what bad fills look like.\n**12-minute rule:** stays refuted (historical, exploratory: 2,022 trades, 78.1% vs 80.9%, -$632.13).\n**Safety (checks from 09:24 UTC):** no real orders, no keys, 5m model frozen, all 3 webhooks on the right channels.",
+  "discussed": "ChatGPT's QC review on #4: hold any limit-order (maker) study because paper fills can't be trusted, and pause new strategies. Claude agreed and reran the numbers. Earlier: Brain Phase A fields, scoreboard fixes and fast-mode security on #8.",
+  "agreed": "Pause new strategies. Keep the frozen 5m test unchanged. No real money. 12-minute rule refuted (Jacob confirmed). The 75¢ cap result isn't counted until its data is in the repo.",
+  "disagreed": "Nothing argued yet, but ChatGPT said HOLD on maker studies and hasn't reviewed the maker15 paper test that started after that (requested by Jacob, per its pre-registration).",
+  "next": "The 5m test keeps collecting toward 300 trades. maker15 keeps collecting toward 100 fills under its frozen rules. ChatGPT should review maker15 on GitHub.",
+  "decision_needed": "Confirm maker15 is an approved exception to the strategy pause, so the decision log can record it. Otherwise it should be stopped."
+ }
+}
