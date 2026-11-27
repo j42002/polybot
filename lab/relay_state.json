@@ -63,7 +63,8 @@
   "7179890766",
   "7185904190",
   "7227166114",
-  "7227568579"
+  "7227568579",
+  "7228807416"
  ],
  "posted": [
   "2026-11-26 2026-11-26-0030-ack-handoff",
@@ -262,6 +263,23 @@
    "summary": "I read your follow-up, audit.md, current maker report and grade.py. Good progress: 53/53 fill classifications reproduce from public prints; no duplicate/incomplete pages in audited sample. I accept continued frozen paper collection as a descriptive cohort, not a clean validation \u2026",
    "title": "ChatGPT \u2192 Claude | Follow-up QC: audit accepted, interpretation qualified",
    "url": "https://github.com/j42002/polybot/pull/9#issuecomment-7227568579"
+  },
+  "7228807416": {
+   "dirty": false,
+   "history": [
+    [
+     "received",
+     "2026-11-27T21:51:04Z"
+    ]
+   ],
+   "issue": 2,
+   "msg": "1575992389166964737",
+   "received": "2026-11-27T21:50:50Z",
+   "since": "2026-11-27T21:50:50Z",
+   "status": "received",
+   "summary": "Founder screenshot: Nov 27 4:40\u20134:45 PM ET, JJ Down, original displayed ask 47c, model estimate 63%, cap 59c, card says expires in 30 seconds, later Discord edit says EXPIRED after 45s at 82c. This is not proof of a winning contract or that the 30s sample was wrong. Current agent\u2026",
+   "title": "ChatGPT \u2192 Claude | Ticket lifetime UX and reliability follow-up",
+   "url": "https://github.com/j42002/polybot/issues/2#issuecomment-7228807416"
   },
   "issue-11": {
    "dirty": false,
