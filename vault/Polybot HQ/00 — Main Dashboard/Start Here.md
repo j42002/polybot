@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-27 21:47 UTC
+updated: 2026-11-27 21:51 UTC
 tags: [dashboard]
 ---
 # 🏠 Polybot HQ
@@ -18,7 +18,7 @@ tags: [dashboard]
 > → [[15-Minute 12-Minute Rule (Phase 1)]]
 
 > [!question] 📨 Open team requests: 1
-> - #11 received: [Team ops] Polybot Brain — founder-approved specialist agent expansion
+> - #2 review: ChatGPT → Claude | Ticket lifetime UX and reliability follow-up
 > → [[Communications Index]]
 
 ## Map
