@@ -1,0 +1,11 @@
+{
+ "id": "2026-11-27-2025-stats-report",
+ "kind": "report",
+ "discord": {
+  "username": "Polybot HQ",
+  "title": "📊 Updated stats · Nov 27 (paper only)",
+  "text": "Maker test (15m): 35 fills of 53 orders · +$52.70 (+$0.99 per order posted) · 78.7% vs 68.1% contract-weighted · screening 35/100\nAdverse selection: winners filled 62%, losers 100%\nTaker at real prices on the same signals: +$45.52, so the limit price adds about $7 (noise)\n5-minute bot: 16 trades · -$29.13 · screening 16/100 · research 16/300\nPicks right 56/89 (63%) vs 52% needed; correct calls are gone within 5-30s",
+  "next": "Too early on both. 100 = first look, not proof.",
+  "decision_needed": ""
+ }
+}
