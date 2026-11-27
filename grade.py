@@ -46,7 +46,8 @@ STRATS = [("mom", "Momentum (bet the last-60s direction)"),
           ("safe", "SAFE (model 75%+, 55-85c ask, +4c, 3:00/2:00 left)")]
 
 
-EXP_MIN = 18                       # the experiment starts at v18: every known measurement bug fixed
+EXP_MIN = 18  # the experiment starts at v18: every known measurement bug fixed
+SCREEN_N = 100          # founder's screening milestone (2026-11-26), reported next to the pre-registered 300
 CLOSE_BANDS = (10, 25, 50)         # fixed $ distances from the target for "close round" comparisons
 
 
@@ -630,8 +631,39 @@ def research_lines(graded, res, all_rows=None):
         a = sum(float(r.get("pnl10") or 0) for r in gt if r["ai_verdict"] == "AGREE")
         al = sum(float(r.get("pnl10") or 0) for r in gt)
         out.append(f"7. **Gemini:** {len(g)} opinions, {len(gt)} on graded trades · AGREE-only {a:+.2f} vs all {al:+.2f}")
-    out += ["", f"Verdict rule: nothing is judged before 300 separate settled rounds with simulated trades. "
-            f"Progress: {len({r['slug'] for r in trades})}/300.", ""]
+    n_tr = len({r['slug'] for r in trades})
+    out += ["", f"**Thresholds (reported separately, never merged):** screening milestone {n_tr}/{SCREEN_N} "
+            f"(set by Jacob 2026-11-26: a first look, not proof) · research target {n_tr}/300 "
+            f"(pre-registered: nothing is judged before 300 separate settled rounds with simulated trades).", ""]
+    out += speed_vs_picks_lines(t, res)
+    return out
+
+
+def speed_vs_picks_lines(t, res):
+    """Reporting only (QC review, PR #9): is the loss from bad picks or from reaction time?
+    Uses the real winner of every delivered alert (not only the ones a tap could have bought)."""
+    rows = res.values() if isinstance(res, dict) else res
+    win = {r.get("slug"): (r.get("winner") or "").lower() for r in rows}
+    g = [r for r in t if r.get("status") != "UNDELIVERED" and r.get("status_30") and win.get(r.get("slug")) in ("up", "down")]
+    if not g:
+        return []
+    right = lambda r: win[r["slug"]] == (r.get("side") or "").lower()
+    be = lambda p: p + US_FEE * p * (1 - p)
+    out = ["**Speed vs picks (reporting only, quote availability not verified fills):**", ""]
+    k = sum(map(right, g))
+    out.append(f"- Picks: the side was right on {k}/{len(g)} delivered alerts ({k / len(g):.0%}) vs average break-even "
+               f"{sum(be(float(r['price'])) for r in g) / len(g):.0%} at the alert price.")
+    same = [r for r in g if all(r.get(f"status_{d}") == "FILLABLE" for d in (5, 10, 20, 30))]
+    if same:
+        pn = lambda d: sum(fnum(r.get(f"pnl10_{d}")) or 0 for r in same)
+        out.append(f"- Same {len(same)} tickets at every delay (right {sum(map(right, same))}/{len(same)}): "
+                   + " · ".join(f"{d}s {pn(d):+.2f}" for d in (5, 10, 20, 30))
+                   + ". Within the same tickets, waiting barely changes the result.")
+    drop = [r for r in g if r.get("status_5") == "FILLABLE" and r.get("status_30") != "FILLABLE"]
+    if drop:
+        out.append(f"- Buyable at 5s but gone by 30s: {len(drop)}, of which right {sum(map(right, drop))}/{len(drop)}. "
+                   "Correct calls get priced in fastest, so slower taps keep a larger share of wrong calls.")
+    out.append("")
     return out
 
 
