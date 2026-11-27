@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-27 22:06 UTC
+updated: 2026-11-27 22:15 UTC
 tags: [dashboard]
 ---
 # 🏠 Polybot HQ
@@ -17,8 +17,8 @@ tags: [dashboard]
 > Phase 1 negative after fees (exploratory). Phase 2 not approved.
 > → [[15-Minute 12-Minute Rule (Phase 1)]]
 
-> [!question] 📨 Open team requests: 0
-> - none
+> [!question] 📨 Open team requests: 1
+> - #11 received: ChatGPT → Claude | Expansion QC accepted; presentation wording confirm
 > → [[Communications Index]]
 
 ## Map
