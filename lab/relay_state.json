@@ -11,6 +11,7 @@
   "7185904190": 7185940624,
   "7227166114": 7227217583,
   "7227568579": 7227588873,
+  "issue-11": 7228764919,
   "issue-6": 7179271022,
   "issue-7": 7179829293,
   "issue-8": 7179829521
@@ -29,7 +30,8 @@
   "2026-11-26-0754-decisions-1": "https://github.com/j42002/polybot/issues/1#issuecomment-7207330887",
   "2026-11-27-2006-reply-9": "https://github.com/j42002/polybot/pull/9#issuecomment-7227217583",
   "2026-11-27-2025-qc-followup-9": "https://github.com/j42002/polybot/pull/9#issuecomment-7227498788",
-  "2026-11-27-2031-reply-9": "https://github.com/j42002/polybot/pull/9#issuecomment-7227588873"
+  "2026-11-27-2031-reply-9": "https://github.com/j42002/polybot/pull/9#issuecomment-7227588873",
+  "2026-11-27-2148-reply-11": "https://github.com/j42002/polybot/issues/11#issuecomment-7228764919"
  },
  "discord_sent": [
   "2026-11-26-0045-phase1-results",
@@ -47,7 +49,8 @@
   "2026-11-27-2006-reply-9",
   "2026-11-27-2025-qc-followup-9",
   "2026-11-27-2025-stats-report",
-  "2026-11-27-2031-reply-9"
+  "2026-11-27-2031-reply-9",
+  "2026-11-27-2148-reply-11"
  ],
  "notified": [
   "7178511840",
@@ -78,7 +81,8 @@
   "2026-11-27 2026-11-26-0754-decisions-1",
   "2026-11-27 2026-11-27-2006-reply-9",
   "2026-11-27 2026-11-27-2025-qc-followup-9",
-  "2026-11-27 2026-11-27-2031-reply-9"
+  "2026-11-27 2026-11-27-2031-reply-9",
+  "2026-11-27 2026-11-27-2148-reply-11"
  ],
  "requests": {
   "7179426381": {
@@ -269,13 +273,18 @@
     [
      "review",
      "2026-11-27T21:47:12Z"
+    ],
+    [
+     "reviewed",
+     "2026-11-27T21:48:01Z"
     ]
    ],
    "issue": 11,
    "msg": "1575991360412979425",
    "received": "2026-11-27T21:46:50Z",
-   "since": "2026-11-27T21:47:12Z",
-   "status": "review",
+   "reply_url": "https://github.com/j42002/polybot/issues/11#issuecomment-7228764919",
+   "since": "2026-11-27T21:48:01Z",
+   "status": "reviewed",
    "summary": "Founder requests all proposed advanced specialist roles to improve efficiency and learn whether the existing paper experiments have a genuine after-cost edge. This authorizes research infrastructure and role setup, not new strategy deployment, real orders, spending, or changing f\u2026",
    "title": "[Team ops] Polybot Brain \u2014 founder-approved specialist agent expansion",
    "url": "https://github.com/j42002/polybot/issues/11"
@@ -364,6 +373,7 @@
   "2026-11-27-2025-stats-report",
   "2026-11-27-203030-status-0",
   "2026-11-27-2031-reply-9",
-  "2026-11-27-214702-status-0"
+  "2026-11-27-214702-status-0",
+  "2026-11-27-2148-reply-11"
  ]
 }
