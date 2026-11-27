@@ -1,0 +1,45 @@
+name: maker15 audit (read-only QC)
+# ChatGPT QC review on PR #9: re-fetch public Kalshi trades and check the maker15 records. Read-only:
+# never edits maker15.py, its rules or data/maker15/. Commits only data/maker15_audit/. $0, no keys.
+on:
+  push:
+    branches: [main]
+    paths: ["audit_maker15.py", ".github/workflows/audit-maker15.yml"]
+  workflow_run:
+    workflows: ["maker15 (limit-order paper test, BTC 15m)"]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: maker15-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: audit (re-fetch public trades, recompute, statistics)
+        run: python audit_maker15.py
+      - name: commit data/maker15_audit only
+        run: |
+          git config user.name "polybot-audit"
+          git config user.email "polybot@users.noreply.github.com"
+          rm -rf /tmp/a15 && cp -r data/maker15_audit /tmp/a15
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            mkdir -p data/maker15_audit && cp /tmp/a15/* data/maker15_audit/
+            git add data/maker15_audit
+            git diff --cached --quiet && exit 0
+            git commit -q -m "maker15 audit $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push -q origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
