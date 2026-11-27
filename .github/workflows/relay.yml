@@ -15,6 +15,7 @@ on:
 permissions:
   contents: write
   issues: write
+  pull-requests: write   # ChatGPT also reviews on pull requests; commenting on a PR needs this
 concurrency:
   group: relay
   cancel-in-progress: false

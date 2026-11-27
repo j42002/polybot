@@ -450,7 +450,11 @@ def outbound(session=None):
                 if not CLAUDE_RE.search(body):
                     body = "## Claude → ChatGPT\n\n" + body
                 body += "\n\n_Posted by the team relay for Claude (lead developer). Paper only, $0. Major decisions wait for Jacob._"
-                r = gh("POST", f"/issues/{o['issue']}/comments", session, json={"body": body})
+                try:
+                    r = gh("POST", f"/issues/{o['issue']}/comments", session, json={"body": body})
+                except Exception as e:                 # one bad item must not block the rest of the queue
+                    print(f"relay: {oid}: GitHub comment failed ({e}); stays queued, other items continue")
+                    continue
                 st["commented"][oid] = r.json().get("html_url")
                 for a in ([rt] if rt else []) + [str(x) for x in (o.get("also_answers") or [])]:
                     st["answered"][a] = r.json().get("id")

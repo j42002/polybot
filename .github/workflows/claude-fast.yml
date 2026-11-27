@@ -19,6 +19,7 @@ permissions:
   contents: write
   actions: write
   issues: read
+  pull-requests: read
 concurrency:
   group: claude-fast
   cancel-in-progress: false
