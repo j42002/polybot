@@ -1,12 +1,12 @@
 ---
 polybot_auto: true
-updated: 2026-11-26 07:58 UTC
+updated: 2026-11-27 01:29 UTC
 tags: [strategy, verdict/refuted]
 ---
 # Issue 1 — 12-minute rule pick the trend side with 3 minutes left (BTC 15m)
 
 > [!abstract] Status
-> **stage:6-verdict, evidence:L2-historical, verdict:refuted** · [open on GitHub](https://github.com/j42002/polybot/issues/1) · 4 comments
+> **stage:6-verdict, evidence:L2-historical, verdict:refuted** · [open on GitHub](https://github.com/j42002/polybot/issues/1) · 5 comments
 
 ## Submission
 ### Submitted by

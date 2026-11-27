@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-26 07:58 UTC
+updated: 2026-11-27 01:29 UTC
 tags: [strategy, index]
 ---
 # 📚 Strategy Library
@@ -9,7 +9,7 @@ Every trading idea is a GitHub issue first. No strategy is trusted because a tra
 
 | Strategy | Stage / evidence | Comments |
 |---|---|---|
-| [[Issue 1 — 12-minute rule pick the trend side with 3 minutes left (BTC 15m)]] | stage:6-verdict, evidence:L2-historical, verdict:refuted | 4 |
+| [[Issue 1 — 12-minute rule pick the trend side with 3 minutes left (BTC 15m)]] | stage:6-verdict, evidence:L2-historical, verdict:refuted | 5 |
 | [[Issue 2 — Polybot model edge buy when our win chance beats the price by 6-15% (BTC 5m)]] | stage:5-testing, evidence:L0-claim | 2 |
 | [[Issue 3 — Buy the cheap (~10c) side for a late bounce (BTC 5m)]] | stage:6-verdict, evidence:L0-claim, verdict:refuted | 0 |
 | [[Issue 4 — Two-sided market making buy Up and Down for under $1 combined]] | stage:3-review, evidence:L1-sourced, verdict:untestable | 2 |
