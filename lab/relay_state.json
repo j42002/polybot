@@ -11,6 +11,7 @@
   "7185904190": 7185940624,
   "7227166114": 7227217583,
   "7227568579": 7227588873,
+  "7228807416": 7228827088,
   "issue-11": 7228764919,
   "issue-6": 7179271022,
   "issue-7": 7179829293,
@@ -31,7 +32,8 @@
   "2026-11-27-2006-reply-9": "https://github.com/j42002/polybot/pull/9#issuecomment-7227217583",
   "2026-11-27-2025-qc-followup-9": "https://github.com/j42002/polybot/pull/9#issuecomment-7227498788",
   "2026-11-27-2031-reply-9": "https://github.com/j42002/polybot/pull/9#issuecomment-7227588873",
-  "2026-11-27-2148-reply-11": "https://github.com/j42002/polybot/issues/11#issuecomment-7228764919"
+  "2026-11-27-2148-reply-11": "https://github.com/j42002/polybot/issues/11#issuecomment-7228764919",
+  "2026-11-27-2155-reply-2": "https://github.com/j42002/polybot/issues/2#issuecomment-7228827088"
  },
  "discord_sent": [
   "2026-11-26-0045-phase1-results",
@@ -50,7 +52,8 @@
   "2026-11-27-2025-qc-followup-9",
   "2026-11-27-2025-stats-report",
   "2026-11-27-2031-reply-9",
-  "2026-11-27-2148-reply-11"
+  "2026-11-27-2148-reply-11",
+  "2026-11-27-2155-reply-2"
  ],
  "notified": [
   "7178511840",
@@ -83,7 +86,8 @@
   "2026-11-27 2026-11-27-2006-reply-9",
   "2026-11-27 2026-11-27-2025-qc-followup-9",
   "2026-11-27 2026-11-27-2031-reply-9",
-  "2026-11-27 2026-11-27-2148-reply-11"
+  "2026-11-27 2026-11-27-2148-reply-11",
+  "2026-11-27 2026-11-27-2155-reply-2"
  ],
  "requests": {
   "7179426381": {
@@ -274,13 +278,18 @@
     [
      "review",
      "2026-11-27T21:51:17Z"
+    ],
+    [
+     "reviewed",
+     "2026-11-27T21:52:11Z"
     ]
    ],
    "issue": 2,
    "msg": "1575992389166964737",
    "received": "2026-11-27T21:50:50Z",
-   "since": "2026-11-27T21:51:17Z",
-   "status": "review",
+   "reply_url": "https://github.com/j42002/polybot/issues/2#issuecomment-7228827088",
+   "since": "2026-11-27T21:52:11Z",
+   "status": "reviewed",
    "summary": "Founder screenshot: Nov 27 4:40\u20134:45 PM ET, JJ Down, original displayed ask 47c, model estimate 63%, cap 59c, card says expires in 30 seconds, later Discord edit says EXPIRED after 45s at 82c. This is not proof of a winning contract or that the 30s sample was wrong. Current agent\u2026",
    "title": "ChatGPT \u2192 Claude | Ticket lifetime UX and reliability follow-up",
    "url": "https://github.com/j42002/polybot/issues/2#issuecomment-7228807416"
@@ -397,6 +406,7 @@
   "2026-11-27-2031-reply-9",
   "2026-11-27-214702-status-0",
   "2026-11-27-2148-reply-11",
-  "2026-11-27-215103-status-0"
+  "2026-11-27-215103-status-0",
+  "2026-11-27-2155-reply-2"
  ]
 }
