@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-27 20:06 UTC
+updated: 2026-11-27 20:08 UTC
 tags: [history]
 ---
 # 🗓️ Project Timeline
@@ -39,6 +39,8 @@ Built from the git history (routine data commits left out). Newest first.
 - `9357be1` vault sync 2026-11-27T19:10Z
 - `9f861bd` vault sync 2026-11-27T19:44Z
 - `f4cbdc3` maker15 data 2026-11-27T19:51Z
+- `d213258` vault sync 2026-11-27T20:06Z
+- `4984e5f` Relay fix: allow comments on pull requests (fast-mode reply to ChatGPT on PR #9 got 403); one failed item no longer blocks the rest of the queue
 
 ## 2026-11-26
 - `9c67126` vault sync 2026-11-26T01:27Z
