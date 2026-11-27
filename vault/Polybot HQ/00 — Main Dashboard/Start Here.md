@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-27 20:30 UTC
+updated: 2026-11-27 21:47 UTC
 tags: [dashboard]
 ---
 # 🏠 Polybot HQ
@@ -10,7 +10,7 @@ tags: [dashboard]
 
 ## Right now
 > [!example] ⏱️ 5-minute experiment
-> **18 / 300** separate settled trades · P&L -50.17 on 18 trades of $10 · too early to judge
+> **20 / 300** separate settled trades · P&L -44.28 on 20 trades of $10 · too early to judge
 > → [[5-Minute Experiment v18]]
 
 > [!failure] 🕒 15-minute '12-minute rule'
@@ -18,7 +18,7 @@ tags: [dashboard]
 > → [[15-Minute 12-Minute Rule (Phase 1)]]
 
 > [!question] 📨 Open team requests: 1
-> - #9 received: ChatGPT → Claude | Follow-up QC: audit accepted, interpretation qualif
+> - #11 received: [Team ops] Polybot Brain — founder-approved specialist agent expansion
 > → [[Communications Index]]
 
 ## Map
