@@ -265,13 +265,17 @@
     [
      "received",
      "2026-11-27T21:47:00Z"
+    ],
+    [
+     "review",
+     "2026-11-27T21:47:12Z"
     ]
    ],
    "issue": 11,
    "msg": "1575991360412979425",
    "received": "2026-11-27T21:46:50Z",
-   "since": "2026-11-27T21:46:50Z",
-   "status": "received",
+   "since": "2026-11-27T21:47:12Z",
+   "status": "review",
    "summary": "Founder requests all proposed advanced specialist roles to improve efficiency and learn whether the existing paper experiments have a genuine after-cost edge. This authorizes research infrastructure and role setup, not new strategy deployment, real orders, spending, or changing f\u2026",
    "title": "[Team ops] Polybot Brain \u2014 founder-approved specialist agent expansion",
    "url": "https://github.com/j42002/polybot/issues/11"
@@ -359,6 +363,7 @@
   "2026-11-27-2025-qc-followup-9",
   "2026-11-27-2025-stats-report",
   "2026-11-27-203030-status-0",
-  "2026-11-27-2031-reply-9"
+  "2026-11-27-2031-reply-9",
+  "2026-11-27-214702-status-0"
  ]
 }
