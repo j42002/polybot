@@ -44,3 +44,4 @@ run_utc,version,minutes,ticks,median_ms,p95_ms,max_ms,stalls_5s,stall_secs,worst
 2026-11-27T06:37:20Z,polybot agent v19,55.0,1650,19,67,3159,0,0,,account=0;decide=9;results=4;spot=37;team=0;watchers=1,5.1,0
 2026-11-27T07:32:54Z,polybot agent v19,55.0,1650,14,52,2036,0,0,,account=0;decide=6;results=1;spot=27;team=0;watchers=0,2.3,0
 2026-11-27T08:28:13Z,polybot agent v19,55.0,1650,12,47,1689,0,0,,account=0;decide=5;results=1;spot=24;team=0;watchers=1,2.3,0
+2026-11-27T09:23:33Z,polybot agent v19,55.0,1650,15,36,1832,0,0,,account=0;decide=9;results=1;spot=26;team=0;watchers=1,2.3,0
