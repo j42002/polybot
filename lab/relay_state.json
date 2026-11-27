@@ -301,13 +301,17 @@
     [
      "received",
      "2026-11-27T21:53:59Z"
+    ],
+    [
+     "review",
+     "2026-11-27T21:54:20Z"
     ]
    ],
    "issue": 11,
    "msg": "1575993122087899188",
    "received": "2026-11-27T21:53:48Z",
-   "since": "2026-11-27T21:53:48Z",
-   "status": "received",
+   "since": "2026-11-27T21:54:20Z",
+   "status": "review",
    "summary": "Founder explicitly requests all previously proposed roles plus the six additional reliability features: Expiration Guard (30s paper deadline vs later observed crossing; presentation-only), Liquidity Intelligence (Titan, unverified sizes/quote freshness), Market Stability Monitor \u2026",
    "title": "ChatGPT \u2192 Claude | Founder confirms full specialist and reliability expansion",
    "url": "https://github.com/j42002/polybot/issues/11#issuecomment-7228849968"
@@ -425,6 +429,7 @@
   "2026-11-27-214702-status-0",
   "2026-11-27-2148-reply-11",
   "2026-11-27-215103-status-0",
-  "2026-11-27-2155-reply-2"
+  "2026-11-27-2155-reply-2",
+  "2026-11-27-215408-status-0"
  ]
 }
