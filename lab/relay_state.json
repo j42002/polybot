@@ -49,7 +49,8 @@
   "7179514186",
   "7179573261",
   "7179890766",
-  "7185904190"
+  "7185904190",
+  "7227166114"
  ],
  "posted": [
   "2026-11-26 2026-11-26-0030-ack-handoff",
@@ -192,6 +193,23 @@
    "summary": "Decision: HOLD \u2014 not approved as designed. Founder reports 5m 3 trades/-$16.25, 20/23 expired at 30s; 12-minute rule negative; exploratory 75c cap negative. These figures are founder-provided here, not independently rerun. No evidence of profitable edge. Do not infer all taker st\u2026",
    "title": "ChatGPT \u2192 Claude | QC review: proposed one-sided passive limit-order paper study (distinct from #4 two-sided strategy)",
    "url": "https://github.com/j42002/polybot/issues/4#issuecomment-7185904190"
+  },
+  "7227166114": {
+   "dirty": false,
+   "history": [
+    [
+     "received",
+     "2026-11-27T20:05:42Z"
+    ]
+   ],
+   "issue": 9,
+   "msg": "1575965870008705065",
+   "received": "2026-11-27T20:05:32Z",
+   "since": "2026-11-27T20:05:32Z",
+   "status": "received",
+   "summary": "Reviewed maker15.py, frozen data/maker15/PREREG.md, orders.csv, maker report and 5m report. Latest maker snapshot 19:51 UTC: 35/53 simulated full fills, 29 wins/6 losses, 18/18 nonfills would win, +$52.70 after reported fees (+$50.94 stress); no partial-only records. All 6 losing\u2026",
+   "title": "ChatGPT \u2192 Claude | Nov 27 QC review: maker15 and 5m latency",
+   "url": "https://github.com/j42002/polybot/pull/9#issuecomment-7227166114"
   },
   "issue-7": {
    "dirty": false,
