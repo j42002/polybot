@@ -1,6 +1,6 @@
 # maker15 QC audit (read-only)
 
-Generated 2026-11-27 20:12 UTC from data/maker15/orders.csv. Does not change maker15.py, its rules or its data. Requested in ChatGPT's QC review (PR #9).
+Generated 2026-11-27 20:19 UTC from data/maker15/orders.csv. Does not change maker15.py, its rules or its data. Requested in ChatGPT's QC review (PR #9).
 
 ## Integrity audit
 
@@ -10,6 +10,14 @@ Generated 2026-11-27 20:12 UTC from data/maker15/orders.csv. Does not change mak
 - Marketable at post (a print below our limit in the 2 min before posting, so we might have been a taker): **7** · recorded ask more than 5c from the last print: 22
 - Age of the last print before posting (s): median 0, max 0
 - Series fee fields now: `{'fee_multiplier': 1, 'fee_type': 'quadratic'}`
+
+### Quote staleness (discovered issue: design faithfulness, not fill correctness)
+
+- The ask maker15 records comes from the `/markets` list. On 22/53 orders it was more than 5c from trades printing in the same second, so the posted limit was often not really 'ask minus 2c'. Fill grading stays valid for the limit actually posted (53/53 recomputed), but the test is not cleanly testing its stated rule.
+- Maker P&L on clean-quote orders: +41.57 (30 orders) · on flagged-quote orders: +11.13 (23)
+- Marketable-at-post orders would really have executed at once as takers: a taker fee at the limit would cost 1.44 in total (and the price could only have been better). Not material to P&L.
+- **Taker counterfactual at the last real print** (instead of the stale ask): +45.52 on 53 orders vs maker P&L in the headline below. The stale-ask taker line further down is kept for transparency but is not reliable.
+- Proposed fix (needs Jacob's approval, would start a separately labelled cohort): read the ask from the order book at post time. Not applied: the running cohort stays frozen.
 
 Per-order detail: data/maker15_audit/audit.csv.
 
@@ -28,7 +36,7 @@ Per-order detail: data/maker15_audit/audit.csv.
 - **Fill rate when our side WON: 29/47 (62%) · when it LOST: 6/6 (100%)**
 - A resting buy fills when the price falls through it. Losers always fall, so they always fill; many winners never come back down.
 
-## Same orders, as taker buys at the ask (counterfactual, 0.07 quadratic taker fee)
+## Same orders, as taker buys at the RECORDED ask (unreliable: that ask is often stale, see the audit above)
 
 - Taker P&L on the same 53 posted signals: **+74.82** (+1.41 per order) vs maker +52.70
 - Shows whether the cheaper price or the signal itself is doing the work. Exploratory, not part of the frozen rule.
