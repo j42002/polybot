@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-27 20:16 UTC
+updated: 2026-11-27 20:26 UTC
 tags: [history]
 ---
 # 🗓️ Project Timeline
@@ -45,6 +45,10 @@ Built from the git history (routine data commits left out). Newest first.
 - `011862c` Read-only maker15 QC audit (ChatGPT review, PR #9): re-fetch public trades with no page cap, dedup IDs, recompute fills, quote staleness/marketable-at-post check, fee fields; per-posted-order P&L, contract-weighted, outcome-conditional fills, taker counterfactual, block bootstrap. Writes only data/maker15_audit/
 - `5e197e7` 5m report (reporting only, QC review PR #9): show the founder's 100-trade screening milestone next to the pre-registered 300 target; add speed-vs-picks lines (same-ticket P&L by delay, correct calls priced in fastest). Trading rules and model unchanged.
 - `0073244` Vault/Brain: maker15 experiment + QC audit notes, decisions (PR #9 merge, frozen tests, 100 = screening), lessons and discoveries from the Nov 27 QC review
+- `5f92dfc` vault sync 2026-11-27T20:16Z
+- `53fd21b` maker15 audit 2026-11-27T20:17Z
+- `0591aa5` maker15 audit: report quote staleness (recorded ask vs same-second prints), P&L by quote quality, marketable-at-post fee impact, taker counterfactual at the last real print; stale-ask taker line marked unreliable
+- `7a069cf` maker15 audit 2026-11-27T20:24Z
 
 ## 2026-11-26
 - `9c67126` vault sync 2026-11-26T01:27Z
