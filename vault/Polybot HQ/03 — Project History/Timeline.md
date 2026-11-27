@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-27 20:08 UTC
+updated: 2026-11-27 20:16 UTC
 tags: [history]
 ---
 # 🗓️ Project Timeline
@@ -41,6 +41,10 @@ Built from the git history (routine data commits left out). Newest first.
 - `f4cbdc3` maker15 data 2026-11-27T19:51Z
 - `d213258` vault sync 2026-11-27T20:06Z
 - `4984e5f` Relay fix: allow comments on pull requests (fast-mode reply to ChatGPT on PR #9 got 403); one failed item no longer blocks the rest of the queue
+- `ee1142c` vault sync 2026-11-27T20:09Z
+- `011862c` Read-only maker15 QC audit (ChatGPT review, PR #9): re-fetch public trades with no page cap, dedup IDs, recompute fills, quote staleness/marketable-at-post check, fee fields; per-posted-order P&L, contract-weighted, outcome-conditional fills, taker counterfactual, block bootstrap. Writes only data/maker15_audit/
+- `5e197e7` 5m report (reporting only, QC review PR #9): show the founder's 100-trade screening milestone next to the pre-registered 300 target; add speed-vs-picks lines (same-ticket P&L by delay, correct calls priced in fastest). Trading rules and model unchanged.
+- `0073244` Vault/Brain: maker15 experiment + QC audit notes, decisions (PR #9 merge, frozen tests, 100 = screening), lessons and discoveries from the Nov 27 QC review
 
 ## 2026-11-26
 - `9c67126` vault sync 2026-11-26T01:27Z
