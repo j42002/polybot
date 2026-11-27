@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-27 22:06 UTC
+updated: 2026-11-27 22:08 UTC
 tags: [history]
 ---
 # 🗓️ Project Timeline
@@ -60,6 +60,7 @@ Built from the git history (routine data commits left out). Newest first.
 - `cddc479` v20 Expiration Guard (display only, founder-approved #2/#11): card says CLOSED at the 30s paper deadline; checks after 30s no longer stamp EXPIRED on the card (still recorded as diagnostics); failed Discord edits retry once; new deadline_stamped column. Scoring (fill_check, 30s official) unchanged; regression tests pass
 - `9aa0734` Polybot HQ specialist agents (founder-approved #11/#8/#2): 16 roles + 6 reliability features folded into 13 deterministic read-only checks (hq_agents.py) inside the existing team-checks run; each has a synthetic-failure self-test and is 🟢 only if that test passed and it ran on real data; registry lab/agents/status.json feeds vault profiles and an auto-drawn blueprint (blueprint.py); one Discord card to #research-reports. No strategy, rule or model changes
 - `2990f65` vault sync 2026-11-27T22:06Z
+- `321f544` vault sync 2026-11-27T22:06Z
 
 ## 2026-11-26
 - `9c67126` vault sync 2026-11-26T01:27Z
