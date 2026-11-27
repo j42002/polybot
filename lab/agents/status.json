@@ -1,0 +1,237 @@
+{
+ "generated": "2026-11-27 22:06 UTC",
+ "agents": [
+  {
+   "key": "velocity",
+   "name": "Velocity",
+   "folded_in": "Expiration Guard",
+   "job": "Latency, quote lifetime, 30s deadline consistency",
+   "status": "implemented",
+   "emoji": "🟢",
+   "self_test": "passed",
+   "flags": 0,
+   "note": "",
+   "summary": [
+    "Delivered alerts watched: 95 · first price-crossing slot: 5s 66, 10s 2, 20s 4, 30s 3, 45s 2, 60s 3, none 15",
+    "Crossed only after the 30s deadline (45/60s): 5 · of those scored EXPIRED at 30s despite a 30s ask under the cap: **0** (must be 0)",
+    "30s check lateness: worst +0.90s (trusted up to +3s) · rows with no 30s check: 0"
+   ]
+  },
+  {
+   "key": "titan",
+   "name": "Titan",
+   "folded_in": "Liquidity Intelligence",
+   "job": "Size availability, fill volume, quote freshness",
+   "status": "implemented",
+   "emoji": "🟢",
+   "self_test": "passed",
+   "flags": 29,
+   "note": "",
+   "summary": [
+    "5m: 30s ask size logged on 95/95 alerts · size >= $10 at 30s: 90 yes / 5 no / 0 unknown. **Size units are not verified against the app, so 5m P&L is quote-availability only.**",
+    "Maker: through-volume / order size on fills: min 17x, median 15198x (volume never the constraint)",
+    "Maker quote freshness (from the read-only audit): recorded ask >5c from same-second prints on 22/55 orders; marketable at post 7/55"
+   ]
+  },
+  {
+   "key": "ghost",
+   "name": "Ghost",
+   "folded_in": "Market Stability Monitor (data)",
+   "job": "Anomalies and missing data in public feeds",
+   "status": "implemented",
+   "emoji": "🟢",
+   "self_test": "passed",
+   "flags": 3,
+   "note": "",
+   "summary": [
+    "5m checks with no market quote: 84/3031 (2.8%)",
+    "Up+Down asks outside 0.95-1.15 (broken or stale book): 0/2688",
+    "Coinbase proxy disagrees with the official settlement: 16/605 rounds (proxy only; official winner is used for scoring)"
+   ]
+  },
+  {
+   "key": "hawk",
+   "name": "Hawk",
+   "folded_in": "Market Stability Monitor (regimes)",
+   "job": "Descriptive results by volatility / momentum",
+   "status": "implemented",
+   "emoji": "🟢",
+   "self_test": "passed",
+   "flags": 0,
+   "note": "",
+   "summary": [
+    "| Test | Regime | posted | filled | win of fills | P&L per posted |",
+    "|---|---|---|---|---|---|",
+    "| maker | 1-min BTC move low | 20 | 16 | 69% | -1.60 |"
+   ]
+  },
+  {
+   "key": "judge",
+   "name": "Judge",
+   "folded_in": "Confidence Auditor, Profit Validator",
+   "job": "Independent stats, calibration, simulated vs executable",
+   "status": "implemented",
+   "emoji": "🟢",
+   "self_test": "passed",
+   "flags": 0,
+   "note": "",
+   "summary": [
+    "**Maker (15m)**: 39 fills / 58 posted · screening 39/100 fills",
+    "P&L +35.91 · **per posted order +0.62** (95% by 4-hour blocks: -0.50 to +1.69, 9 blocks)",
+    "Win of fills 31/39 = 79.5% (95% 64%-89%) vs break-even 74.5% · contract-weighted 75.6% vs 69.0%"
+   ]
+  },
+  {
+   "key": "nemesis",
+   "name": "Nemesis",
+   "folded_in": "Loss Intelligence",
+   "job": "Red-team challenges, every loss explained",
+   "status": "implemented",
+   "emoji": "🟢",
+   "self_test": "passed",
+   "flags": 5,
+   "note": "",
+   "summary": [
+    "**Challenges**",
+    "- Maker signal right on 86% of 58 posted orders, but the same AGREE signal won 78.1% (break-even 80.9%) on 2022 historical trades. Expect regression toward history.",
+    "- Adverse selection: fill rate 62% when right vs 100% when wrong. Unfilled 'wins' are not earnings."
+   ]
+  },
+  {
+   "key": "oracle",
+   "name": "Oracle",
+   "folded_in": "",
+   "job": "Stress tests and simulated screening outcomes",
+   "status": "implemented",
+   "emoji": "🟢",
+   "self_test": "passed",
+   "flags": 0,
+   "note": "",
+   "summary": [
+    "Expected P&L per posted order at the live win rate (86%): +0.64",
+    "…at the historical AGREE win rate (78.1%): **-0.32**",
+    "…with the 0.0175 maker fee at the live rate: +0.61"
+   ]
+  },
+  {
+   "key": "chronos",
+   "name": "Chronos",
+   "folded_in": "",
+   "job": "Coverage timeline, gaps, versions, provenance",
+   "status": "implemented",
+   "emoji": "🟢",
+   "self_test": "passed",
+   "flags": 0,
+   "note": "",
+   "summary": [
+    "Maker windows logged 126 of ~126 in its span · coverage gaps over 22 min: 0",
+    "5m settled rounds recorded 679 · gaps over 7.5 min: 21 (longest 1.2 h)",
+    "5m ticket versions in the experiment: {'v19': 95}"
+   ]
+  },
+  {
+   "key": "mirror",
+   "name": "Mirror",
+   "folded_in": "",
+   "job": "Venue fees and settlement definitions compared",
+   "status": "development",
+   "emoji": "🔵",
+   "self_test": "passed",
+   "flags": 0,
+   "note": "definitions done; live cross-venue prices not collected yet",
+   "summary": [
+    "| | Kalshi KXBTC15M | Polymarket US BTC 15m / 5m |",
+    "|---|---|---|",
+    "| Taker fee | round-up of 0.07 x C x P x (1-P) | 0.095 x P x (1-P) per share |"
+   ]
+  },
+  {
+   "key": "overwatch",
+   "name": "Overwatch",
+   "folded_in": "Mechanic",
+   "job": "Workflow failures, data freshness, relay health",
+   "status": "implemented",
+   "emoji": "🟢",
+   "self_test": "passed",
+   "flags": 1,
+   "note": "",
+   "summary": [
+    "**Flags:** team relay: 1 failed in 24h",
+    "Workflows active in the last 24h: 8 · runs 100 · failed 1",
+    "5m tickets data: last update 0.7 h ago (limit 6 h)"
+   ]
+  },
+  {
+   "key": "genesis",
+   "name": "Genesis",
+   "folded_in": "",
+   "job": "Pre-registration template and validator",
+   "status": "implemented",
+   "emoji": "🟢",
+   "self_test": "passed",
+   "flags": 1,
+   "note": "",
+   "summary": [
+    "Template: lab/templates/PREREG_TEMPLATE.md",
+    "15m Phase 1 PREREG: missing: PASS/FAIL verdict rule (exploratory by design: it reports results but sets no PASS/FAIL)",
+    "maker15 PREREG: all required sections present"
+   ]
+  },
+  {
+   "key": "evolution",
+   "name": "Evolution",
+   "folded_in": "",
+   "job": "Proposal-only hypotheses from measured patterns",
+   "status": "implemented",
+   "emoji": "🟢",
+   "self_test": "passed",
+   "flags": 0,
+   "note": "",
+   "summary": [
+    "- 5m: correct calls are priced in within 5-30s. Hypothesis to pre-register later: alerts sent with more time left, or faster delivery, keep more correct calls buyable. Needs a Genesis PREREG and Jacob's approval.",
+    "- Maker: fills cluster in losing outcomes. Hypothesis: the edge, if any, is in the signal, not the resting price; compare with a taker baseline at real prices before any new maker variant.",
+    "- Maker: profit depends on the signal staying above its historical win rate. Track the live rate against history as fills grow; no change to the frozen test."
+   ]
+  },
+  {
+   "key": "cortex",
+   "name": "Cortex",
+   "folded_in": "Archive, Nexus",
+   "job": "Shared registry for the vault and relay (this file's output)",
+   "status": "implemented",
+   "emoji": "🟢",
+   "self_test": "passed",
+   "flags": 0,
+   "note": "",
+   "summary": [
+    "Writes lab/agents/status.json (read by vault_sync for agent profiles) and lab/agents/report.md; the relay request queue is Nexus's coordination list."
+   ]
+  }
+ ],
+ "existing": [
+  {
+   "name": "Data Auditor",
+   "module": "team_checks.py"
+  },
+  {
+   "name": "Quant Analyst",
+   "module": "team_checks.py"
+  },
+  {
+   "name": "Risk Sentinel",
+   "module": "team_checks.py"
+  },
+  {
+   "name": "Maker QC audit",
+   "module": "audit_maker15.py"
+  },
+  {
+   "name": "Relay (Nexus queue)",
+   "module": "relay.py"
+  },
+  {
+   "name": "Vault sync (Archive)",
+   "module": "vault_sync.py"
+  }
+ ]
+}
