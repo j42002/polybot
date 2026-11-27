@@ -189,7 +189,7 @@ def stats(rows):
         f"- **Fill rate when our side WON: {fill_w}/{win_n} ({fill_w / win_n:.0%}) · when it LOST: {fill_l}/{lose_n} ({(fill_l / lose_n if lose_n else 0):.0%})**",
         "- A resting buy fills when the price falls through it. Losers always fall, so they always fill; many winners never come back down.",
         "",
-        "## Same orders, as taker buys at the ask (counterfactual, 0.07 quadratic taker fee)",
+        "## Same orders, as taker buys at the RECORDED ask (unreliable: that ask is often stale, see the audit above)",
         "",
         f"- Taker P&L on the same {len(tk)} posted signals: **{sum(tk):+.2f}** ({sum(tk) / len(tk):+.2f} per order) vs maker {tot:+.2f}",
         "- Shows whether the cheaper price or the signal itself is doing the work. Exploratory, not part of the frozen rule.",
@@ -233,6 +233,14 @@ def main(online=True):
             w.writeheader()
             w.writerows(res)
         fl = Counter(x.split(":")[0] for r in res for x in r["flags"].split(";") if x)
+        O = {r["ticker"]: r for r in P}
+        clean = [x for x in res if not x["flags"]]
+        flagged = [x for x in res if x["flags"]]
+        qpl = lambda xs: sum(float(O[x["ticker"]]["pnl"] or 0) for x in xs if O[x["ticker"]]["status"] == "FILLED")
+        mk_fee = sum(math.ceil(round(100 * TAKER_RATE * int(O[x["ticker"]]["contracts"]) * float(O[x["ticker"]]["limit"])
+                                      * (1 - float(O[x["ticker"]]["limit"])), 6)) / 100 for x in res if "MARKETABLE" in x["flags"])
+        tk_last = [v for v in (taker_pnl(O[x["ticker"]] | {"ask": x["last_print_before"]}) for x in res
+                               if x["last_print_before"] is not None) if v is not None]
         errs = [r for r in res if r["error"]]
         mism = [r for r in res if r["status"] != r["recomputed"]]
         ages = sorted(r["last_print_age_s"] for r in res if r["last_print_age_s"] is not None)
@@ -246,6 +254,17 @@ def main(online=True):
                f"**{fl.get('MARKETABLE_AT_POST', 0)}** · recorded ask more than 5c from the last print: {fl.get('QUOTE_FAR_FROM_LAST_PRINT', 0)}",
                f"- Age of the last print before posting (s): median {ages[len(ages) // 2] if ages else 'n/a'}, max {ages[-1] if ages else 'n/a'}",
                f"- Series fee fields now: `{series_fee_fields()}`",
+               "", "### Quote staleness (discovered issue: design faithfulness, not fill correctness)", "",
+               f"- The ask maker15 records comes from the `/markets` list. On {fl.get('QUOTE_FAR_FROM_LAST_PRINT', 0)}/{len(res)} orders it was more than 5c "
+               "from trades printing in the same second, so the posted limit was often not really 'ask minus 2c'. Fill grading stays valid for the "
+               "limit actually posted (53/53 recomputed), but the test is not cleanly testing its stated rule.",
+               f"- Maker P&L on clean-quote orders: {qpl(clean):+.2f} ({len(clean)} orders) · on flagged-quote orders: {qpl(flagged):+.2f} ({len(flagged)})",
+               f"- Marketable-at-post orders would really have executed at once as takers: a taker fee at the limit would cost "
+               f"{mk_fee:.2f} in total (and the price could only have been better). Not material to P&L.",
+               f"- **Taker counterfactual at the last real print** (instead of the stale ask): {sum(tk_last):+.2f} on {len(tk_last)} orders "
+               "vs maker P&L in the headline below. The stale-ask taker line further down is kept for transparency but is not reliable.",
+               "- Proposed fix (needs Jacob's approval, would start a separately labelled cohort): read the ask from the order book "
+               "at post time. Not applied: the running cohort stays frozen.",
                "", "Per-order detail: data/maker15_audit/audit.csv.", ""]
     md += stats(rows)
     with open(os.path.join(OUT, "audit.md"), "w", encoding="utf-8") as f:
