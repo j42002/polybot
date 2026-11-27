@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v19"
+VERSION = "polybot agent v20"   # v20: Expiration Guard (display only; scoring unchanged)
 
 import csv
 import json
@@ -54,14 +54,15 @@ TICKET_FIELDS = ["t_start", "slug", "tier", "side", "price", "ev", "sent_utc", "
                  "fill_5", "fill_10", "fill_20", "fill_30", "status_5", "status_10", "status_20", "status_30",
                  "pnl10_5", "pnl10_10", "pnl10_20", "pnl10_30",
                  # v16: delivery proof, liquidity (unverified units), model id for forward tests
-                 "delivered", "http_status", "deliver_err", "expire_stamped",
+                 "delivered", "http_status", "deliver_err", "expire_stamped", "deadline_stamped",
                  "ask_size_5", "ask_size_10", "ask_size_20", "ask_size_30", "size_ok_30", "model_id", "version"]
 # v10 latency rules (Jacob's 6:40 recording: SAFE DOWN at 71c, 91%, sent with 2:00 left;
 # by the time the app loaded DOWN was 94-96c with 1:14 left, then BTC reversed and Up won).
 TICKET_TIERS = ("JJ",)             # SAFE tickets paused: late-window favorites move faster than a human
 TICKET_EDGE_MAX = 0.15             # a bigger "edge" usually means stale data or a move already underway
 HUMAN_DELAY = 30                   # paper fills use the live price 30s after the ticket, not the signal price
-WATCH_AT = (5, 10, 20, 30, 45, 60) # seconds after sending: re-read the price, expire the ticket if it ran
+WATCH_AT = (5, 10, 20, 30, 45, 60) # seconds after sending: re-read the price. Only checks up to HUMAN_DELAY can stamp
+                                   # EXPIRED on the card; at HUMAN_DELAY the card says CLOSED; 45/60s are diagnostics only
 FILL_DELAYS = (5, 10, 20, 30)      # paper fills scored at each simulated reaction time
 LATE_TOL = 3.0                     # a price check more than 3s late is not trusted for a fill
 SPOT_META = {}                     # timing of the latest Coinbase read
@@ -653,6 +654,14 @@ def fill_check(asks, at, max_price, expired_s, delay):
     return ask, "FILLABLE"
 
 
+def _stamp(session, w, text):
+    """Edit the ticket's top line. If Discord refuses, queue one retry on the next loop (display only)."""
+    ok = edit_ticket(session, w["msg_id"], text)
+    if not ok:
+        w["retry_edit"], w["retry_at"] = text, time.time() + 2
+    return ok
+
+
 def run_watchers(session, now):
     """Re-read each live ticket's price at +5..60s, recording the ACTUAL time of every check.
     Expire it in Discord the moment it runs past its 'good up to' price. When all checks are
@@ -674,10 +683,24 @@ def run_watchers(session, now):
             if w["expired_s"] is None and (ask is None or ask > w["max_price"]):
                 w["expired_s"], w["expired_why"] = sec, ("no_quote" if ask is None else "price")
                 now_txt = f"{ask * 100:.0f}%" if ask else "unavailable"
-                w["stamped"] = edit_ticket(session, w["msg_id"],
-                            f"\u26d4 **EXPIRED after {sec}s** \u2014 {w['side']} is now {now_txt} "
-                            f"(limit {w['max_price'] * 100:.0f}%). Don't buy this one.")
+                if sec <= HUMAN_DELAY:
+                    w["stamped"] = _stamp(session, w, f"\u26d4 **EXPIRED after {sec}s** \u2014 {w['side']} is now {now_txt} "
+                                                      f"(limit {w['max_price'] * 100:.0f}%). Don't buy this one.")
+                else:
+                    # Expiration Guard (display only): the paper deadline was HUMAN_DELAY seconds and the card already
+                    # says CLOSED. A crossing seen later is kept in the data (expired_s) as a diagnostic, not shown.
+                    w["stamped"] = "after_deadline"
                 print(f"  ticket {w['slug']} expired at +{sec}s (ask {ask})")
+            if sec == HUMAN_DELAY and w["expired_s"] is None:
+                px = f"{ask * 100:.0f}%" if ask else "unavailable"
+                w["deadline_stamped"] = _stamp(session, w, f"\u23f9 **CLOSED at {HUMAN_DELAY}s (paper deadline)** \u2014 {w['side']} "
+                                                           f"was {px}, still within the limit ({w['max_price'] * 100:.0f}%). Paper result is "
+                                                           f"scored at {HUMAN_DELAY}s; later price moves are research notes only.")
+        if w.get("retry_edit") and now >= w.get("retry_at", 0):          # one Discord edit failed: try again once
+            text = w.pop("retry_edit")
+            ok = edit_ticket(session, w["msg_id"], text)
+            key = "deadline_stamped" if text.startswith("\u23f9") else "stamped"
+            w[key] = ok
         if len(w["asks"]) == len(WATCH_AT) or now > w["t_sent"] + WATCH_AT[-1] + 30:
             finish_watcher(w)
 
@@ -689,7 +712,9 @@ def finish_watcher(w):
     upd = {**{f"ask_{k}": v for k, v in w["asks"].items()},
            **{f"ask_{k}_at": v for k, v in w["at"].items()},
            "expired_s": w["expired_s"], "expired_why": w.get("expired_why") or "",
-           "expire_stamped": "" if w["expired_s"] is None else bool(w.get("stamped")),
+           "expire_stamped": "" if w["expired_s"] is None else (w["stamped"] if w.get("stamped") == "after_deadline"
+                                                                else bool(w.get("stamped"))),
+           "deadline_stamped": "" if "deadline_stamped" not in w else bool(w["deadline_stamped"]),
            **{f"ask_size_{k}": w.get("sizes", {}).get(k) for k in FILL_DELAYS}}
     sz, px30 = w.get("sizes", {}).get(HUMAN_DELAY), w["asks"].get(HUMAN_DELAY)
     upd["size_ok_30"] = "" if sz is None or not px30 else (sz >= 10 / px30)     # logged only: units unverified
