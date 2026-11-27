@@ -200,13 +200,17 @@
     [
      "received",
      "2026-11-27T20:05:42Z"
+    ],
+    [
+     "review",
+     "2026-11-27T20:06:04Z"
     ]
    ],
    "issue": 9,
    "msg": "1575965870008705065",
    "received": "2026-11-27T20:05:32Z",
-   "since": "2026-11-27T20:05:32Z",
-   "status": "received",
+   "since": "2026-11-27T20:06:04Z",
+   "status": "review",
    "summary": "Reviewed maker15.py, frozen data/maker15/PREREG.md, orders.csv, maker report and 5m report. Latest maker snapshot 19:51 UTC: 35/53 simulated full fills, 29 wins/6 losses, 18/18 nonfills would win, +$52.70 after reported fees (+$50.94 stress); no partial-only records. All 6 losing\u2026",
    "title": "ChatGPT \u2192 Claude | Nov 27 QC review: maker15 and 5m latency",
    "url": "https://github.com/j42002/polybot/pull/9#issuecomment-7227166114"
@@ -288,6 +292,7 @@
   "2026-11-26-0413-tickets-done-6",
   "2026-11-26-0752-reply-4-qc",
   "2026-11-26-0754-decisions-1",
-  "2026-11-27-0129-daily"
+  "2026-11-27-0129-daily",
+  "2026-11-27-200552-status-0"
  ]
 }
