@@ -9,6 +9,7 @@
   "7179573261": 7179829144,
   "7179890766": 7180656251,
   "7185904190": 7185940624,
+  "7227166114": 7227217583,
   "issue-6": 7179271022,
   "issue-7": 7179829293,
   "issue-8": 7179829521
@@ -24,7 +25,8 @@
   "2026-11-26-0216-reply-8": "https://github.com/j42002/polybot/issues/8#issuecomment-7180656251",
   "2026-11-26-0413-tickets-done-6": "https://github.com/j42002/polybot/issues/6#issuecomment-7182414735",
   "2026-11-26-0752-reply-4-qc": "https://github.com/j42002/polybot/issues/4#issuecomment-7185940624",
-  "2026-11-26-0754-decisions-1": "https://github.com/j42002/polybot/issues/1#issuecomment-7207330887"
+  "2026-11-26-0754-decisions-1": "https://github.com/j42002/polybot/issues/1#issuecomment-7207330887",
+  "2026-11-27-2006-reply-9": "https://github.com/j42002/polybot/pull/9#issuecomment-7227217583"
  },
  "discord_sent": [
   "2026-11-26-0045-phase1-results",
@@ -38,7 +40,8 @@
   "2026-11-26-0413-tickets-done-6",
   "2026-11-26-0752-reply-4-qc",
   "2026-11-26-0754-decisions-1",
-  "2026-11-27-0129-daily"
+  "2026-11-27-0129-daily",
+  "2026-11-27-2006-reply-9"
  ],
  "notified": [
   "7178511840",
@@ -65,7 +68,8 @@
   "2026-11-26 2026-11-26-0216-reply-8",
   "2026-11-26 2026-11-26-0413-tickets-done-6",
   "2026-11-26 2026-11-26-0752-reply-4-qc",
-  "2026-11-27 2026-11-26-0754-decisions-1"
+  "2026-11-27 2026-11-26-0754-decisions-1",
+  "2026-11-27 2026-11-27-2006-reply-9"
  ],
  "requests": {
   "7179426381": {
@@ -204,13 +208,18 @@
     [
      "review",
      "2026-11-27T20:06:04Z"
+    ],
+    [
+     "reviewed",
+     "2026-11-27T20:08:42Z"
     ]
    ],
    "issue": 9,
    "msg": "1575965870008705065",
    "received": "2026-11-27T20:05:32Z",
-   "since": "2026-11-27T20:06:04Z",
-   "status": "review",
+   "reply_url": "https://github.com/j42002/polybot/pull/9#issuecomment-7227217583",
+   "since": "2026-11-27T20:08:42Z",
+   "status": "reviewed",
    "summary": "Reviewed maker15.py, frozen data/maker15/PREREG.md, orders.csv, maker report and 5m report. Latest maker snapshot 19:51 UTC: 35/53 simulated full fills, 29 wins/6 losses, 18/18 nonfills would win, +$52.70 after reported fees (+$50.94 stress); no partial-only records. All 6 losing\u2026",
    "title": "ChatGPT \u2192 Claude | Nov 27 QC review: maker15 and 5m latency",
    "url": "https://github.com/j42002/polybot/pull/9#issuecomment-7227166114"
@@ -293,6 +302,7 @@
   "2026-11-26-0752-reply-4-qc",
   "2026-11-26-0754-decisions-1",
   "2026-11-27-0129-daily",
-  "2026-11-27-200552-status-0"
+  "2026-11-27-200552-status-0",
+  "2026-11-27-2006-reply-9"
  ]
 }
