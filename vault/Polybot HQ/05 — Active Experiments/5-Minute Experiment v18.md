@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-28 02:24 UTC
+updated: 2026-11-28 03:30 UTC
 tags: [experiment, experiment/5m, status/running]
 ---
 # ⏱️ 5-Minute Experiment (v18, frozen)
@@ -16,24 +16,24 @@ Polymarket US *BTC Up or Down 5 min*: does the frozen model's win chance beat th
 - Experiment rows start at agent v18. Older versions had measurement bugs and are excluded.
 - Only FILLABLE quotes count as trades. Break-even includes the 0.095 taker fee.
 
-## Latest numbers (2026-11-28 01:59 UTC)
+## Latest numbers (2026-11-28 02:54 UTC)
 Strategy and model are frozen during this experiment. Older versions had known measurement bugs and are excluded.
 
-**Data:** 672 settled rounds observed · 110 alerts (108 delivered) · **24 simulated trades**. Rounds observed are not trades.
+**Data:** 682 settled rounds observed · 111 alerts (109 delivered) · **24 simulated trades**. Rounds observed are not trades.
 
-1. **Settlement disagreement:** 20/658 valid rounds (3.0%) where Coinbase points at the wrong winner · missing 34
-2. **Model vs market accuracy (Brier, lower is better):** model 0.1628 vs market 0.1684 on 672 rounds -> model sharper
+1. **Settlement disagreement:** 20/667 valid rounds (3.0%) where Coinbase points at the wrong winner · missing 36
+2. **Model vs market accuracy (Brier, lower is better):** model 0.1623 vs market 0.1677 on 682 rounds -> model sharper
 3. **Simulated profit after fees:** -21.65 on 24 trades of $10 · win rate 46% vs break-even 49%, 95% range per trade -5.46 to +3.65
-4. **Quote available at simulated tap (size not verified):** 5s 34/108 · 10s 32/108 · 20s 27/108 · 30s 24/108
+4. **Quote available at simulated tap (size not verified):** 5s 34/109 · 10s 32/109 · 20s 27/109 · 30s 24/109
 5. **Max drawdown:** -60.71
-6. **Loop health and missing data:** 63 runs, stalls over 5s 4/103932 loops, longest BTC price gap 10.8s · checks with no market quote 92/3300 (book fallback used 1348) · bad close samples 15 · undelivered alerts 2 · unconfirmed price checks 0
+6. **Loop health and missing data:** 64 runs, stalls over 5s 4/105582 loops, longest BTC price gap 10.8s · checks with no market quote 92/3350 (book fallback used 1359) · bad close samples 16 · undelivered alerts 2 · unconfirmed price checks 0
 7. **Gemini:** not enabled or no opinions yet
 
 **Thresholds (reported separately, never merged):** screening milestone 24/100 (set by Jacob 2026-11-26: a first look, not proof) · research target 24/300 (pre-registered: nothing is judged before 300 separate settled rounds with simulated trades).
 
 **Speed vs picks (reporting only, quote availability not verified fills):**
 
-- Picks: the side was right on 66/107 delivered alerts (62%) vs average break-even 52% at the alert price.
+- Picks: the side was right on 67/109 delivered alerts (61%) vs average break-even 52% at the alert price.
 - Same 24 tickets at every delay (right 11/24): 5s -24.40 · 10s -26.33 · 20s -21.24 · 30s -21.65. Within the same tickets, waiting barely changes the result.
 - Buyable at 5s but gone by 30s: 10, of which right 7/10. Correct calls get priced in fastest, so slower taps keep a larger share of wrong calls.
 
