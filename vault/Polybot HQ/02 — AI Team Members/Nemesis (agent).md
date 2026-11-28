@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-28 00:49 UTC
+updated: 2026-11-28 02:36 UTC
 tags: [agents, agents/implemented]
 ---
 # 🟢 Nemesis
@@ -11,11 +11,11 @@ tags: [agents, agents/implemented]
 
 ## Latest findings
 **Challenges**
-- Maker signal right on 83% of 65 posted orders, but the same AGREE signal won 78.1% (break-even 80.9%) on 2022 historical trades. Expect regression toward history.
+- Maker signal right on 84% of 67 posted orders, but the same AGREE signal won 78.1% (break-even 80.9%) on 2022 historical trades. Expect regression toward history.
 - Adverse selection: fill rate 59% when right vs 100% when wrong. Unfilled 'wins' are not earnings.
-- Price risk: 17 fills at 85c+ earn about +0.95 each when right; one loss costs up to -9.96. A high win rate on expensive contracts can still lose.
-- Independence: 65 orders over 2 calendar day(s). Few independent periods: one regime can explain it all.
-- 5m survivorship: picks right on 61% of all alerts but 46% of the ones still buyable at 30s.
+- Price risk: 18 fills at 85c+ earn about +0.91 each when right; one loss costs up to -9.96. A high win rate on expensive contracts can still lose.
+- Independence: 67 orders over 3 calendar day(s). Few independent periods: one regime can explain it all.
+- 5m survivorship: picks right on 62% of all alerts but 46% of the ones still buyable at 30s.
 
 **Every loss (Loss Intelligence)**
 | Test | Market | Entry | P&L | Time | Context | Context | Fill |

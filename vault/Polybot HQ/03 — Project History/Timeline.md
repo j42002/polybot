@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-28 02:24 UTC
+updated: 2026-11-28 02:36 UTC
 tags: [history]
 ---
 # 🗓️ Project Timeline
@@ -17,6 +17,7 @@ Built from the git history (routine data commits left out). Newest first.
 - `7e1e6fc` maker15 audit 2026-11-28T01:33Z
 - `07dd5b5` mirror15 data 2026-11-28T02:21Z
 - `5188293` maker15 data 2026-11-28T02:21Z
+- `8f8ecdd` vault sync 2026-11-28T02:24Z
 
 ## 2026-11-27
 - `84c8892` maker15 data 2026-11-27T00:25Z
@@ -80,6 +81,7 @@ Built from the git history (routine data commits left out). Newest first.
 - `77f210d` maker15 data 2026-11-27T23:34Z
 - `a24241e` agent v21: ticket wording only (model estimate, no buy-now language, paper window close time)
 - `948a76b` Mirror: same-moment Kalshi vs Polymarket US price log at each maker decision time
+- `48cc8b1` Mirror: log the live Polymarket US feeCoefficient (15m and current 5m market)
 
 ## 2026-11-26
 - `9c67126` vault sync 2026-11-26T01:27Z

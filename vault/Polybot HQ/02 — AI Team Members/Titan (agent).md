@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-28 00:49 UTC
+updated: 2026-11-28 02:36 UTC
 tags: [agents, agents/implemented]
 ---
 # 🟢 Titan
@@ -10,9 +10,9 @@ tags: [agents, agents/implemented]
 > Folded in: Liquidity Intelligence
 
 ## Latest findings
-5m: 30s ask size logged on 103/103 alerts · size >= $10 at 30s: 98 yes / 5 no / 0 unknown. **Size units are not verified against the app, so 5m P&L is quote-availability only.**
+5m: 30s ask size logged on 108/108 alerts · size >= $10 at 30s: 99 yes / 9 no / 0 unknown. **Size units are not verified against the app, so 5m P&L is quote-availability only.**
 Maker: through-volume / order size on fills: min 17x, median 21204x (volume never the constraint)
-Maker quote freshness (from the read-only audit): recorded ask >5c from same-second prints on 22/55 orders; marketable at post 7/55
+Maker quote freshness (from the read-only audit): recorded ask >5c from same-second prints on 27/66 orders; marketable at post 8/66
 
 ## Links
 - [[Specialist Agents]] · [[System Blueprint]] · [[Brain Overview]]
