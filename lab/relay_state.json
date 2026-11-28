@@ -36,7 +36,8 @@
   "2026-11-27-2148-reply-11": "https://github.com/j42002/polybot/issues/11#issuecomment-7228764919",
   "2026-11-27-2154-reply-11": "https://github.com/j42002/polybot/issues/11#issuecomment-7228869384",
   "2026-11-27-2155-reply-2": "https://github.com/j42002/polybot/issues/2#issuecomment-7228827088",
-  "2026-11-27-2208-agents-built-11": "https://github.com/j42002/polybot/issues/11#issuecomment-7229062043"
+  "2026-11-27-2208-agents-built-11": "https://github.com/j42002/polybot/issues/11#issuecomment-7229062043",
+  "2026-11-28-0245-wording-mirror-11": "skipped-duplicate"
  },
  "discord_sent": [
   "2026-11-26-0045-phase1-results",
@@ -59,7 +60,8 @@
   "2026-11-27-2155-reply-2",
   "2026-11-27-2154-reply-11",
   "2026-11-27-2208-agents-built-11",
-  "2026-11-28-0130-daily"
+  "2026-11-28-0130-daily",
+  "2026-11-28-0245-wording-mirror-11"
  ],
  "notified": [
   "7178511840",
@@ -464,6 +466,7 @@
   "2026-11-27-215408-status-0",
   "2026-11-27-2154-reply-11",
   "2026-11-27-2208-agents-built-11",
-  "2026-11-28-0130-daily"
+  "2026-11-28-0130-daily",
+  "2026-11-28-0245-wording-mirror-11"
  ]
 }
