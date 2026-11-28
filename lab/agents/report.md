@@ -1,6 +1,6 @@
 # Polybot HQ specialist agents
 
-Generated 2026-11-28 00:49 UTC. Deterministic Python checks, read-only, $0. Status 🟢 = self-test with planted failures passed AND the check ran on real data in this run. Nothing here changes a strategy or experiment.
+Generated 2026-11-28 00:52 UTC. Deterministic Python checks, read-only, $0. Status 🟢 = self-test with planted failures passed AND the check ran on real data in this run. Nothing here changes a strategy or experiment.
 
 | | Agent | Folded in | Job | Self-test | Flags |
 |---|---|---|---|---|---|
@@ -12,7 +12,7 @@ Generated 2026-11-28 00:49 UTC. Deterministic Python checks, read-only, $0. Stat
 | 🟢 | Nemesis | Loss Intelligence | Red-team challenges, every loss explained | passed | 5 |
 | 🟢 | Oracle | - | Stress tests and simulated screening outcomes | passed | 0 |
 | 🟢 | Chronos | - | Coverage timeline, gaps, versions, provenance | passed | 0 |
-| 🔵 | Mirror | - | Venue fees and settlement definitions compared | passed | 0 |
+| 🔵 | Mirror | - | Kalshi vs Polymarket US: fees, settlement and same-moment prices | passed | 0 |
 | 🟢 | Overwatch | Mechanic | Workflow failures, data freshness, relay health | passed | 1 |
 | 🟢 | Genesis | - | Pre-registration template and validator | passed | 1 |
 | 🟢 | Evolution | - | Proposal-only hypotheses from measured patterns | passed | 0 |
@@ -133,16 +133,16 @@ Provenance: 5m prices = Polymarket US gateway (/bbo, /book fallback) · 5m winne
 | Settlement | BRTI 60s average | BRTI 60s average |
 | Settlement agreement (Phase 1) | 696/696 windows identical | |
 Matched events on two venues are the same event, not independent evidence.
-Pending: a live price comparison needs a Polymarket US 15m quote at each maker post time (not collected).
+Live comparison: no snapshots yet (collector runs alongside each maker15 run).
 
 ## Overwatch (+ Mechanic)
 
 **Flags:** team relay: 1 failed in 24h
 Workflows active in the last 24h: 8 · runs 100 · failed 1
 5m tickets data: last update 0.7 h ago (limit 6 h)
-maker15 orders: last update 0.3 h ago (limit 3 h)
-maker15 audit: last update 3.9 h ago (limit 6 h)
-vault: last update 1.6 h ago (limit 6 h)
+maker15 orders: last update 0.4 h ago (limit 3 h)
+maker15 audit: last update 4.0 h ago (limit 6 h)
+vault: last update 0.0 h ago (limit 6 h)
 Relay: 13 requests tracked, 0 cards waiting for Discord
 
 ## Genesis

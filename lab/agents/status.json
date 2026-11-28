@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-28 00:49 UTC",
+ "generated": "2026-11-28 00:52 UTC",
  "agents": [
   {
    "key": "velocity",
@@ -133,12 +133,12 @@
    "key": "mirror",
    "name": "Mirror",
    "folded_in": "",
-   "job": "Venue fees and settlement definitions compared",
+   "job": "Kalshi vs Polymarket US: fees, settlement and same-moment prices",
    "status": "development",
    "emoji": "🔵",
    "self_test": "passed",
    "flags": 0,
-   "note": "definitions done; live cross-venue prices not collected yet",
+   "note": "definitions done; waiting for the first live same-moment price pairs",
    "summary": [
     "| | Kalshi KXBTC15M | Polymarket US BTC 15m / 5m |",
     "|---|---|---|",

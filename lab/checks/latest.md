@@ -1,4 +1,4 @@
-# Team checks · 2026-11-28 00:49 UTC
+# Team checks · 2026-11-28 00:52 UTC
 
 Deterministic Python checks, $0, read-only.
 
@@ -6,7 +6,7 @@ Deterministic Python checks, $0, read-only.
 
 - ✅ 5m rounds observed in the last 24h: 272/288 (94%)
 - ✅ duplicate checkpoint rows (v18+): 0
-- ✅ checks with no market quote (24h): 24/1321
+- ✅ checks with no market quote (24h): 24/1318
 - ✅ rows with unreadable timestamps: 0
 - ✅ close samples with gaps (>6s hole or <20 samples): 13/670
 - ⚠️ alerts that failed delivery (v18+): 2/105
