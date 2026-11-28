@@ -1,13 +1,13 @@
 ---
 polybot_auto: true
-updated: 2026-11-28 00:49 UTC
+updated: 2026-11-28 01:04 UTC
 tags: [results, experiment/5m]
 ---
 # 📈 5-Minute Research Report (all detail)
 
 # polybot report
 
-Updated 2026-11-28 00:08 UTC | 3465 checkpoints logged | 3277 graded | 698 windows settled
+Updated 2026-11-28 01:04 UTC | 3519 checkpoints logged | 3330 graded | 709 windows settled
 
 PAPER ONLY. P&L is per $1 share after the taker fee; Total assumes 10 shares per bet. Breakeven = win rate needed after the fee (price + fee).
 
@@ -15,21 +15,21 @@ PAPER ONLY. P&L is per $1 share after the taker fee; Total assumes 10 shares per
 
 Strategy and model are frozen during this experiment. Older versions had known measurement bugs and are excluded.
 
-**Data:** 650 settled rounds observed · 105 alerts (103 delivered) · **24 simulated trades**. Rounds observed are not trades.
+**Data:** 661 settled rounds observed · 107 alerts (105 delivered) · **24 simulated trades**. Rounds observed are not trades.
 
-1. **Settlement disagreement:** 20/638 valid rounds (3.1%) where Coinbase points at the wrong winner · missing 32
-2. **Model vs market accuracy (Brier, lower is better):** model 0.1639 vs market 0.1696 on 650 rounds -> model sharper
+1. **Settlement disagreement:** 20/648 valid rounds (3.1%) where Coinbase points at the wrong winner · missing 33
+2. **Model vs market accuracy (Brier, lower is better):** model 0.1633 vs market 0.1691 on 661 rounds -> model sharper
 3. **Simulated profit after fees:** -21.65 on 24 trades of $10 · win rate 46% vs break-even 49%, 95% range per trade -5.46 to +3.65
-4. **Quote available at simulated tap (size not verified):** 5s 34/103 · 10s 32/103 · 20s 27/103 · 30s 24/103
+4. **Quote available at simulated tap (size not verified):** 5s 34/105 · 10s 32/105 · 20s 27/105 · 30s 24/105
 5. **Max drawdown:** -60.71
-6. **Loop health and missing data:** 61 runs, stalls over 5s 4/100632 loops, longest BTC price gap 10.8s · checks with no market quote 92/3193 (book fallback used 1291) · bad close samples 13 · undelivered alerts 2 · unconfirmed price checks 0
+6. **Loop health and missing data:** 62 runs, stalls over 5s 4/102282 loops, longest BTC price gap 10.8s · checks with no market quote 92/3247 (book fallback used 1316) · bad close samples 14 · undelivered alerts 2 · unconfirmed price checks 0
 7. **Gemini:** not enabled or no opinions yet
 
 **Thresholds (reported separately, never merged):** screening milestone 24/100 (set by Jacob 2026-11-26: a first look, not proof) · research target 24/300 (pre-registered: nothing is judged before 300 separate settled rounds with simulated trades).
 
 **Speed vs picks (reporting only, quote availability not verified fills):**
 
-- Picks: the side was right on 63/103 delivered alerts (61%) vs average break-even 52% at the alert price.
+- Picks: the side was right on 64/105 delivered alerts (61%) vs average break-even 52% at the alert price.
 - Same 24 tickets at every delay (right 11/24): 5s -24.40 · 10s -26.33 · 20s -21.24 · 30s -21.65. Within the same tickets, waiting barely changes the result.
 - Buyable at 5s but gone by 30s: 10, of which right 7/10. Correct calls get priced in fastest, so slower taps keep a larger share of wrong calls.
 
@@ -37,79 +37,79 @@ Strategy and model are frozen during this experiment. Older versions had known m
 
 # Detail and history (ALL versions, mixed models; for context, not evidence)
 
-## 4:00 left (639 windows)
+## 4:00 left (649 windows)
 
 | Strategy | Bets | Hit | Breakeven | Per bet | 95% CI | Total | Verdict |
 |---|---|---|---|---|---|---|---|
-| Momentum (bet the last-60s direction) | 638 | 65.4% | 64.6% | +0.008 | -0.029 to +0.044 | $+49.71 | NO EDGE |
-| Lean (bet the side BTC is on now) | 639 | 65.1% | 67.3% | -0.022 | -0.058 to +0.015 | $-137.82 | NO EDGE |
-| Edge (model beats the ask by 3c+) | 321 | 48.9% | 42.6% | +0.063 | +0.013 to +0.114 | $+202.54 | PASSES |
-| JJ (60-90s in, 35-70c ask, model +4c) | 146 | 62.3% | 52.9% | +0.095 | +0.014 to +0.175 | $+138.05 | INCONCLUSIVE (need 300+) |
+| Momentum (bet the last-60s direction) | 648 | 65.4% | 64.4% | +0.010 | -0.026 to +0.046 | $+64.31 | NO EDGE |
+| Lean (bet the side BTC is on now) | 649 | 65.5% | 67.1% | -0.017 | -0.053 to +0.019 | $-108.01 | NO EDGE |
+| Edge (model beats the ask by 3c+) | 325 | 49.2% | 42.7% | +0.065 | +0.015 to +0.116 | $+212.51 | PASSES |
+| JJ (60-90s in, 35-70c ask, model +4c) | 150 | 62.7% | 52.8% | +0.099 | +0.020 to +0.177 | $+148.03 | INCONCLUSIVE (need 300+) |
 | SAFE (model 75%+, 55-85c ask, +4c, 3:00/2:00 left) | 0 | - | - | - | - | - | no bets |
 
-Brier (lower is better): model 0.2135 vs market 0.2201 -> **model is sharper**
+Brier (lower is better): model 0.2127 vs market 0.2193 -> **model is sharper**
 
-## 3:30 left (653 windows)
+## 3:30 left (664 windows)
 
 | Strategy | Bets | Hit | Breakeven | Per bet | 95% CI | Total | Verdict |
 |---|---|---|---|---|---|---|---|
-| Momentum (bet the last-60s direction) | 653 | 66.0% | 62.9% | +0.031 | -0.003 to +0.065 | $+203.03 | NO EDGE |
-| Lean (bet the side BTC is on now) | 653 | 69.5% | 71.1% | -0.016 | -0.051 to +0.018 | $-104.74 | NO EDGE |
-| Edge (model beats the ask by 3c+) | 369 | 39.3% | 35.2% | +0.041 | -0.004 to +0.086 | $+151.15 | NO EDGE |
-| JJ (60-90s in, 35-70c ask, model +4c) | 77 | 59.7% | 52.2% | +0.076 | -0.030 to +0.182 | $+58.19 | INCONCLUSIVE (need 300+) |
+| Momentum (bet the last-60s direction) | 664 | 65.8% | 62.9% | +0.029 | -0.005 to +0.063 | $+192.31 | NO EDGE |
+| Lean (bet the side BTC is on now) | 664 | 69.7% | 71.1% | -0.013 | -0.048 to +0.021 | $-89.35 | NO EDGE |
+| Edge (model beats the ask by 3c+) | 374 | 39.3% | 35.2% | +0.041 | -0.003 to +0.086 | $+153.97 | NO EDGE |
+| JJ (60-90s in, 35-70c ask, model +4c) | 78 | 59.0% | 52.1% | +0.069 | -0.037 to +0.174 | $+53.46 | INCONCLUSIVE (need 300+) |
 | SAFE (model 75%+, 55-85c ask, +4c, 3:00/2:00 left) | 0 | - | - | - | - | - | no bets |
 
-Brier (lower is better): model 0.1991 vs market 0.2019 -> **model is sharper**
+Brier (lower is better): model 0.1987 vs market 0.2015 -> **model is sharper**
 
-## 3:00 left (660 windows)
+## 3:00 left (671 windows)
 
 | Strategy | Bets | Hit | Breakeven | Per bet | 95% CI | Total | Verdict |
 |---|---|---|---|---|---|---|---|
-| Momentum (bet the last-60s direction) | 659 | 64.2% | 61.4% | +0.028 | -0.004 to +0.060 | $+186.15 | NO EDGE |
-| Lean (bet the side BTC is on now) | 659 | 74.5% | 74.3% | +0.002 | -0.030 to +0.035 | $+16.16 | NO EDGE |
-| Edge (model beats the ask by 3c+) | 402 | 34.8% | 30.6% | +0.043 | +0.003 to +0.082 | $+171.17 | PASSES |
+| Momentum (bet the last-60s direction) | 670 | 64.3% | 61.4% | +0.029 | -0.003 to +0.061 | $+194.46 | NO EDGE |
+| Lean (bet the side BTC is on now) | 670 | 74.9% | 74.2% | +0.007 | -0.025 to +0.039 | $+47.98 | NO EDGE |
+| Edge (model beats the ask by 3c+) | 408 | 35.3% | 30.7% | +0.046 | +0.006 to +0.085 | $+185.78 | PASSES |
 | JJ (60-90s in, 35-70c ask, model +4c) | 0 | - | - | - | - | - | no bets |
-| SAFE (model 75%+, 55-85c ask, +4c, 3:00/2:00 left) | 35 | 88.6% | 71.0% | +0.176 | +0.064 to +0.288 | $+61.60 | INCONCLUSIVE (need 300+) |
+| SAFE (model 75%+, 55-85c ask, +4c, 3:00/2:00 left) | 36 | 88.9% | 71.2% | +0.177 | +0.068 to +0.285 | $+63.55 | INCONCLUSIVE (need 300+) |
 
-Brier (lower is better): model 0.1743 vs market 0.1794 -> **model is sharper**
+Brier (lower is better): model 0.1730 vs market 0.1786 -> **model is sharper**
 
-## 2:00 left (666 windows)
+## 2:00 left (677 windows)
 
 | Strategy | Bets | Hit | Breakeven | Per bet | 95% CI | Total | Verdict |
 |---|---|---|---|---|---|---|---|
-| Momentum (bet the last-60s direction) | 628 | 62.9% | 59.5% | +0.034 | +0.005 to +0.063 | $+213.42 | PASSES |
-| Lean (bet the side BTC is on now) | 615 | 82.1% | 79.6% | +0.025 | -0.004 to +0.054 | $+152.51 | NO EDGE |
-| Edge (model beats the ask by 3c+) | 496 | 25.0% | 21.9% | +0.031 | +0.002 to +0.061 | $+155.43 | PASSES |
+| Momentum (bet the last-60s direction) | 639 | 62.4% | 59.3% | +0.031 | +0.003 to +0.059 | $+197.90 | PASSES |
+| Lean (bet the side BTC is on now) | 626 | 82.1% | 79.7% | +0.024 | -0.005 to +0.053 | $+149.32 | NO EDGE |
+| Edge (model beats the ask by 3c+) | 503 | 25.0% | 22.0% | +0.031 | +0.001 to +0.060 | $+154.44 | PASSES |
 | JJ (60-90s in, 35-70c ask, model +4c) | 0 | - | - | - | - | - | no bets |
-| SAFE (model 75%+, 55-85c ask, +4c, 3:00/2:00 left) | 24 | 91.7% | 74.8% | +0.169 | +0.058 to +0.279 | $+40.48 | INCONCLUSIVE (need 300+) |
+| SAFE (model 75%+, 55-85c ask, +4c, 3:00/2:00 left) | 25 | 92.0% | 74.6% | +0.174 | +0.068 to +0.281 | $+43.57 | INCONCLUSIVE (need 300+) |
 
-Brier (lower is better): model 0.1311 vs market 0.1349 -> **model is sharper**
+Brier (lower is better): model 0.1310 vs market 0.1345 -> **model is sharper**
 
-## 1:00 left (659 windows)
+## 1:00 left (669 windows)
 
 | Strategy | Bets | Hit | Breakeven | Per bet | 95% CI | Total | Verdict |
 |---|---|---|---|---|---|---|---|
-| Momentum (bet the last-60s direction) | 490 | 50.6% | 48.5% | +0.022 | -0.007 to +0.051 | $+105.87 | NO EDGE |
-| Lean (bet the side BTC is on now) | 417 | 85.4% | 81.1% | +0.042 | +0.009 to +0.076 | $+176.62 | PASSES |
-| Edge (model beats the ask by 3c+) | 585 | 17.1% | 12.9% | +0.042 | +0.019 to +0.064 | $+243.11 | PASSES |
+| Momentum (bet the last-60s direction) | 498 | 50.4% | 48.2% | +0.022 | -0.007 to +0.051 | $+109.70 | NO EDGE |
+| Lean (bet the side BTC is on now) | 425 | 85.2% | 81.1% | +0.040 | +0.007 to +0.074 | $+171.51 | PASSES |
+| Edge (model beats the ask by 3c+) | 590 | 17.1% | 12.9% | +0.042 | +0.020 to +0.064 | $+247.86 | PASSES |
 | JJ (60-90s in, 35-70c ask, model +4c) | 0 | - | - | - | - | - | no bets |
 | SAFE (model 75%+, 55-85c ask, +4c, 3:00/2:00 left) | 0 | - | - | - | - | - | no bets |
 
-Brier (lower is better): model 0.0889 vs market 0.1012 -> **model is sharper**
+Brier (lower is better): model 0.0891 vs market 0.1013 -> **model is sharper**
 
 ## Price-to-beat proxy (Coinbase vs real Chainlink)
 
-- 60s average: n=698, bias $-0.05, sd $0.62 (set BASIS_SD near 1)
-- spot at open: n=698, bias $-3.77, sd $23.05 (set BASIS_SD near 23)
+- 60s average: n=709, bias $-0.05, sd $0.61 (set BASIS_SD near 1)
+- spot at open: n=709, bias $-3.77, sd $22.89 (set BASIS_SD near 23)
 
 ## Is the win chance honest? (calibration)
 
 | Bot said | Checks | Separate markets | Said (avg) | Actually won |
 |---|---|---|---|---|
-| 50%-60% | 795 | 413 | 55% | 56% |
-| 60%-70% | 737 | 446 | 65% | 69% |
-| 70%-80% | 626 | 410 | 75% | 79% |
-| 80%-90% | 1108 | 494 | 87% | 95% |
+| 50%-60% | 811 | 420 | 55% | 57% |
+| 60%-70% | 748 | 452 | 65% | 69% |
+| 70%-80% | 632 | 415 | 75% | 79% |
+| 80%-90% | 1128 | 501 | 87% | 96% |
 | 90%-100% | 11 | 9 | 96% | 91% |
 
 These are the live predictions as logged before each round settled, so they are out of sample.
@@ -124,36 +124,36 @@ If 'Actually won' sits well below 'Said', the model is overconfident.
 
 | Model | Separate markets | Checks | Model Brier | Market Brier | Sharper |
 |---|---|---|---|---|---|
-| rw-m1.4-c0.88-b15 | 650 | 3097 | 0.1639 | 0.1696 | model |
+| rw-m1.4-c0.88-b15 | 661 | 3150 | 0.1633 | 0.1691 | model |
 - Read only after 100+ separate markets per model. Brier: lower is better.
 
 ## Research dashboard (funnel)
 
-- Markets observed and settled: 698 (650 with decision logging, v16+)
-- Markets with a signal: 245
-- Alerts attempted: 105 · delivered: 103 · delivery failed: 2
+- Markets observed and settled: 709 (661 with decision logging, v16+)
+- Markets with a signal: 252
+- Alerts attempted: 107 · delivered: 105 · delivery failed: 2
 - Simulated fills (quote available, size not verified): 24
-- Expired alerts: 79 · unconfirmed price checks: 0
+- Expired alerts: 81 · unconfirmed price checks: 0
 - Missed opportunities (blocked by a filter; P&L at the signal price is hypothetical):
-  - BELOW_BAR: 104 markets, would have won 70, +52.28 at 10 shares. Negative = the filter saved money.
-  - EDGE_CAP: 53 markets, would have won 39, +107.59 at 10 shares. Negative = the filter saved money.
+  - BELOW_BAR: 106 markets, would have won 72, +59.59 at 10 shares. Negative = the filter saved money.
+  - EDGE_CAP: 56 markets, would have won 41, +110.52 at 10 shares. Negative = the filter saved money.
   - SKIP_SPIKE: 7 markets, would have won 5, +8.52 at 10 shares. Negative = the filter saved money.
-- Liquidity (units UNVERIFIED, not used): 98/103 simulated taps showed ask size >= $10 worth
+- Liquidity (units UNVERIFIED, not used): 98/105 simulated taps showed ask size >= $10 worth
 
 ## Settlement check (Coinbase vs the real settlement price, v18+)
 
-- Rounds with a logged close: 670 · valid comparisons: 638
-- Missing/untrusted: 13 sampling gaps (>6s hole or <20 samples), 19 not settled yet, 0 without a published settlement price
-- Coinbase minus settlement: bias $-2.74, typical gap $4.46, worst $20.80
-- Coinbase would have named the wrong winner: 20/638 (3.1%)
-- Rounds settling within $10 of the target: 98, wrong winner 19 (19%)
-- Rounds settling within $25 of the target: 214, wrong winner 20 (9%)
-- Rounds settling within $50 of the target: 353, wrong winner 20 (6%)
+- Rounds with a logged close: 681 · valid comparisons: 648
+- Missing/untrusted: 14 sampling gaps (>6s hole or <20 samples), 19 not settled yet, 0 without a published settlement price
+- Coinbase minus settlement: bias $-2.74, typical gap $4.43, worst $20.80
+- Coinbase would have named the wrong winner: 20/648 (3.1%)
+- Rounds settling within $10 of the target: 99, wrong winner 19 (19%)
+- Rounds settling within $25 of the target: 220, wrong winner 20 (9%)
+- Rounds settling within $50 of the target: 363, wrong winner 20 (6%)
 
 ## Honest scoreboard (tickets)
 
-- Independent settled markets with a ticket: 103 (goal: 300)
-- Simulated paper trades: 24 · no-trade (expired/unconfirmed): 79
+- Independent settled markets with a ticket: 105 (goal: 300)
+- Simulated paper trades: 24 · no-trade (expired/unconfirmed): 81
 - 'Trade' = the best ask was within the limit at the simulated tap. Liquidity (size) is not verified,
   so this is simulated quote availability, not a proven fill.
 - Win rate 11/24 = 46% vs break-even 49.1% (price paid + fee)
@@ -161,27 +161,27 @@ If 'Actually won' sits well below 'Said', the model is overconfident.
 
 ## Ticket speed (measured, not assumed)
 
-- Tickets: 105
+- Tickets: 107
 - Coinbase trade -> we received it: median 908 ms (worst 6396)
-- Coinbase request round trip: median 16 ms (worst 106)
+- Coinbase request round trip: median 15 ms (worst 106)
 - Polymarket quote round trip: median 27 ms (worst 75)
-- Price read -> decision made: median 72 ms (worst 168)
-- Decision -> Discord accepted: median 1556 ms (worst 10697)
+- Price read -> decision made: median 71 ms (worst 168)
+- Decision -> Discord accepted: median 1547 ms (worst 10697)
 - Time left on the timer when sent: median 237s
 - Price checks ran late by: median 0.5s (over 3s = not trusted for a fill)
 
 | Simulated tap after | Quote available | Expired | Unconfirmed | Paper P&L ($10 each) |
 |---|---|---|---|---|
-| 5s | 34/103 | 69 | 0 | +21.93 |
-| 10s | 32/103 | 71 | 0 | -7.20 |
-| 20s | 27/103 | 76 | 0 | +6.58 |
-| 30s | 24/103 | 79 | 0 | -21.65 |
+| 5s | 34/105 | 71 | 0 | +21.93 |
+| 10s | 32/105 | 73 | 0 | -7.20 |
+| 20s | 27/105 | 78 | 0 | +6.58 |
+| 30s | 24/105 | 81 | 0 | -21.65 |
 - Simulated quote availability, not verified fills: size at the ask is not known yet.
 - Expired or unconfirmed = no trade.
 
 ## Loop health (are our timings trustworthy?)
 
-- Runs: 61 · loops: 100632 · loops over 5s: 4 (0.00%)
+- Runs: 62 · loops: 102282 · loops over 5s: 4 (0.00%)
 - Worst single loop: 10.8s · longest gap between BTC prices: 10.8s
 - Most common stall cause: spot
 - A tick or price check during a stall is late; price checks over 3s late never count as a fill.
