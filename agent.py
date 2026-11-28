@@ -12,7 +12,7 @@ Every 5-minute window it:
 
 grade.py later pulls the real outcome + real price to beat and scores it all.
 """
-VERSION = "polybot agent v20"   # v20: Expiration Guard (display only; scoring unchanged)
+VERSION = "polybot agent v21"   # v20: Expiration Guard (display only; scoring unchanged)
 
 import csv
 import json
@@ -507,20 +507,20 @@ def ticket_payload(row, stats):
     return {
         "username": "polybot",
         "embeds": [{
-            "title": f"[{row.get('tier', 'JJ')}] {'BUY UP' if side == 'Up' else 'BUY DOWN'} · BTC 5m · {left // 60}:{left % 60:02d} left",
+            "title": f"[{row.get('tier', 'JJ')}] PAPER PICK: {'UP' if side == 'Up' else 'DOWN'} · BTC 5m · {left // 60}:{left % 60:02d} left",
             "url": market_url(row["slug"]),
-            "description": f"Window {label} ET · [**Open this contract**]({market_url(row['slug'])})",
+            "description": f"Window {label} ET · [View contract]({market_url(row['slug'])})",
             "color": 0x2ECC71 if side == "Up" else 0xE74C3C,
             "fields": [
                 {"name": "Ask", "value": f"{price * 100:.0f}c", "inline": True},
-                {"name": "Our fair value", "value": f"{fair * 100:.0f}c", "inline": True},
-                {"name": "Edge after fee", "value": f"{ev * 100:+.1f}c", "inline": True},
+                {"name": "Model estimate", "value": f"{fair * 100:.0f}c", "inline": True},
+                {"name": "Model edge after fee", "value": f"{ev * 100:+.1f}c", "inline": True},
                 {"name": "BTC vs price to beat", "value": f"${row['dist']:+,.0f}", "inline": True},
                 {"name": "Last 60s", "value": f"${(row['mom60'] or 0):+,.0f}", "inline": True},
                 {"name": "Window closes", "value": f"in {left}s", "inline": True},
                 {"name": "Contract", "value": f"[{row['slug']}]({market_url(row['slug'])})", "inline": False},
             ],
-            "footer": {"text": "paper signal \u00b7 not advice"},
+            "footer": {"text": f"paper research only \u00b7 not a trade instruction \u00b7 {HUMAN_DELAY}s paper window"},
         }],
     }
 
@@ -532,7 +532,7 @@ def record_text(stats, kind="JJ"):
         pnl = stats.get("pnl", 0)
         return (f"{kind} so far: won {round(hit * n)} of {n} (needs {be:.0%} to make money) \u00b7 "
                 f"{'up' if pnl >= 0 else 'down'} ${abs(pnl):.2f} per share")
-    return f"{kind} so far: no finished bets yet"
+    return f"{kind} so far: no finished paper picks yet"
 
 
 def card_png(row, prices, stats):
@@ -555,6 +555,8 @@ def card_png(row, prices, stats):
         "prices": prices, "fee_rate": row.get("fee_rate") or FEE_RATE,
         "record": record_text(stats, row.get("tier", "JJ")), "tier": row.get("tier", "JJ"),
         "max_price": round(min(row["jj_price"] + row["jj_ev"] - TICKET_BUFFER, 0.97), 2),
+        "window_s": HUMAN_DELAY,
+        "closes_at": datetime.fromtimestamp(time.time() + HUMAN_DELAY, ET).strftime("%I:%M:%S %p").lstrip("0"),
     })
 
 
@@ -685,7 +687,7 @@ def run_watchers(session, now):
                 now_txt = f"{ask * 100:.0f}%" if ask else "unavailable"
                 if sec <= HUMAN_DELAY:
                     w["stamped"] = _stamp(session, w, f"\u26d4 **EXPIRED after {sec}s** \u2014 {w['side']} is now {now_txt} "
-                                                      f"(limit {w['max_price'] * 100:.0f}%). Don't buy this one.")
+                                                      f"(cap {w['max_price'] * 100:.0f}%). Not filled in the paper test.")
                 else:
                     # Expiration Guard (display only): the paper deadline was HUMAN_DELAY seconds and the card already
                     # says CLOSED. A crossing seen later is kept in the data (expired_s) as a diagnostic, not shown.
@@ -694,7 +696,7 @@ def run_watchers(session, now):
             if sec == HUMAN_DELAY and w["expired_s"] is None:
                 px = f"{ask * 100:.0f}%" if ask else "unavailable"
                 w["deadline_stamped"] = _stamp(session, w, f"\u23f9 **CLOSED at {HUMAN_DELAY}s (paper deadline)** \u2014 {w['side']} "
-                                                           f"was {px}, still within the limit ({w['max_price'] * 100:.0f}%). Paper result is "
+                                                           f"was {px}, still within the cap ({w['max_price'] * 100:.0f}%). Paper result is "
                                                            f"scored at {HUMAN_DELAY}s; later price moves are research notes only.")
         if w.get("retry_edit") and now >= w.get("retry_at", 0):          # one Discord edit failed: try again once
             text = w.pop("retry_edit")

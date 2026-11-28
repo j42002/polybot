@@ -59,7 +59,7 @@ def main(path=os.path.join("lab", "agents", "status.json"), out=os.path.join("la
         text(bx + 24, by + 62 + i * 27, "• " + s, 14, c=WH)
 
     # left column: experiments (data in)
-    exps = [("5-minute bot (Polymarket US)", "frozen · paper · v20 display fix", "#22c55e"),
+    exps = [("5-minute bot (Polymarket US)", "frozen · paper · v21 wording fix", "#22c55e"),
             ("15-min maker test (Kalshi)", "frozen · paper · audit running", "#22c55e"),
             ("12-minute rule (Phase 1)", "refuted · kept on record", "#ef4444")]
     text(40, 130, "EXPERIMENTS (data in)", 16, True, GR)

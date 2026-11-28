@@ -3,12 +3,12 @@
 Rendered at 2x (2160x2160) so text stays sharp on phone screens.
 Read top to bottom in ~2 seconds:
   header : BTC 5M badge, window time, countdown pill
-  hero   : BUY UP / BUY DOWN + tier, with a WIN CHANCE ring
+  hero   : PAPER PICK UP / DOWN + tier, with a MODEL ESTIMATE ring
   stats  : it costs -> it's really worth -> so it's cheap by (plain English)
   chart  : BTC's last ~3 min vs the price to beat (green zone = Up wins, red = Down wins)
   plain  : the bet in plain English (pay X, get $1 if right, lose X if wrong, wins ~N in 10)
   money  : what $10 wins or loses after the fee
-  footer : paper record + "tap the title to open in the app"
+  footer : paper record + "paper research only, not a trade instruction"
 """
 import io
 import math
@@ -82,14 +82,16 @@ def money_line(price, fee_rate, stake=10.0):
     return shares, shares * (1 - price) - fee, stake + fee
 
 
-def plain_english(price, fair, side="Up", secs_left=240, max_price=None):
-    """In the app's own words. Tells you the highest % that is still a good buy."""
+def plain_english(price, fair, side="Up", secs_left=240, max_price=None, window_s=30, closes_at=None):
+    """Plain English, paper-research wording: the paper window and cap, then what the model estimates.
+    No buy-now language: this is a paper evaluation, not a trade instruction."""
     pay = round(price * 100)
     top = round((max_price or price) * 100)
     in10 = max(1, min(9, round(fair * 10)))
     btn = "Up" if side == "Up" else "Down"
-    return (f"DO THIS: tap {btn} now, up to {top}%. Ticket expires in 30 sec.",
-            f"{btn} wins if BTC ends {'above' if side == 'Up' else 'below'} the Target. We think it wins about {in10} in 10.")
+    close = f" (closes {closes_at} ET)" if closes_at else ""
+    return (f"PAPER TEST: {window_s}s window from send{close} \u00b7 cap {top}%",
+            f"{btn} wins if BTC ends {'above' if side == 'Up' else 'below'} the Target. Model estimate: about {in10} in 10.")
 
 
 def render(t):
@@ -117,13 +119,13 @@ def render(t):
     glow_box(img, (40, 120, W - 40, 330), 30, acc, acc, acc_d)
     d = ImageDraw.Draw(img)
     arrow = "▲" if up else "▼"
-    d.text(s(78, 190), f"{arrow} BUY {'UP' if up else 'DOWN'}", font=f(94), fill=INK, anchor="lm")
+    d.text(s(78, 190), f"{arrow} PAPER {'UP' if up else 'DOWN'}", font=f(84), fill=INK, anchor="lm")
     pill = f"{tier} SIGNAL"
     pw = tw(d, pill, f(24)) + 36
     d.rounded_rectangle(s(80, 254, 80 + pw, 298), radius=22 * K, fill=INK)
     d.text(s(80 + pw / 2, 276), pill, font=f(24), fill=acc, anchor="mm")
     left_s = t["secs_left"]
-    d.text(s(100 + pw, 276), f"Tap {'Up' if up else 'Down'} now \u00b7 good up to {round((t.get('max_price') or t['price']) * 100)}%",
+    d.text(s(100 + pw, 276), f"paper cap {round((t.get('max_price') or t['price']) * 100)}% \u00b7 {t.get('window_s', 30)}s window",
            font=f(30), fill=INK, anchor="lm")
     cx, cy, rad = W - 148, 225, 76
     d.ellipse(s(cx - rad - 8, cy - rad - 8, cx + rad + 8, cy + rad + 8), fill=INK)
@@ -131,14 +133,14 @@ def render(t):
     d.arc(box, 0, 360, fill=(48, 52, 64), width=14 * K)
     d.arc(box, -90, -90 + 360 * t["fair"], fill=acc, width=14 * K)
     d.text(s(cx, cy - 8), f"{t['fair'] * 100:.0f}%", font=f(40), fill=TEXT, anchor="mm")
-    d.text(s(cx, cy + 28), "WIN CHANCE", font=f(14), fill=MUTED, anchor="mm")
+    d.text(s(cx, cy + 28), "MODEL EST.", font=f(14), fill=MUTED, anchor="mm")
 
     # ---- stats, in plain English: reads left to right as one sentence
     cents = lambda v: f"{v * 100:.0f}\u00a2" if v * 100 >= 1 else f"{v * 100:.1f}\u00a2"
     btn = "UP" if up else "DOWN"
-    stats = [(f"APP SAYS {btn}", f"{t['price'] * 100:.0f}%", TEXT, "the button price now"),
-             (f"WE SAY {btn}", f"{t['fair'] * 100:.0f}%", BLUE, "our real win chance"),
-             ("YOUR EDGE", f"+{max(t['ev'] * 100, 0.1):.0f}%", GREEN, "after fees")]
+    stats = [(f"MARKET {btn}", f"{t['price'] * 100:.0f}%", TEXT, "price at send"),
+             (f"MODEL {btn}", f"{t['fair'] * 100:.0f}%", BLUE, "model estimate"),
+             ("MODEL EDGE", f"+{max(t['ev'] * 100, 0.1):.0f}%", GREEN, "estimate, after fees")]
     bw = (W - 80 - 2 * 20) / 3
     for i, (label, val, col, note) in enumerate(stats):
         x0 = 40 + i * (bw + 20)
@@ -196,7 +198,8 @@ def render(t):
         d.text(s(W / 2, (gy0 + gy1) / 2), "chart warming up", font=f(24, False), fill=MUTED, anchor="mm")
 
     # ---- plain English
-    l1, l2 = plain_english(t["price"], t["fair"], t["side"], t["secs_left"], t.get("max_price"))
+    l1, l2 = plain_english(t["price"], t["fair"], t["side"], t["secs_left"], t.get("max_price"),
+                           t.get("window_s", 30), t.get("closes_at"))
     panel(img, (40, 792, W - 40, 884), 24, (30, 27, 18), outline=(92, 70, 30))
     d.text(s(64, 822), l1, font=f(23), fill=GOLD, anchor="lm")
     d.text(s(64, 858), l2, font=f(22, False), fill=TEXT, anchor="lm")
@@ -205,18 +208,18 @@ def render(t):
     shares, win, lose = money_line(t["price"], t["fee_rate"])
     my0, my1 = 904, 976
     panel(img, (40, my0, 360, my1), 24)
-    d.text(s(62, (my0 + my1) / 2), "$10 BET", font=f(30), fill=TEXT, anchor="lm")
+    d.text(s(62, (my0 + my1) / 2), "$10 PAPER", font=f(30), fill=TEXT, anchor="lm")
     d.text(s(340, (my0 + my1) / 2), f"{shares:.1f} sh", font=f(22, False), fill=MUTED, anchor="rm")
     panel(img, (376, my0, 710, my1), 24, (16, 52, 32))
-    d.text(s(543, (my0 + my1) / 2), f"WIN  +${win:.2f}", font=f(33), fill=GREEN, anchor="mm")
+    d.text(s(543, (my0 + my1) / 2), f"IF RIGHT +${win:.2f}", font=f(27), fill=GREEN, anchor="mm")
     panel(img, (726, my0, W - 40, my1), 24, (60, 20, 20))
-    d.text(s((726 + W - 40) / 2, (my0 + my1) / 2), f"LOSE  -${lose:.2f}", font=f(33), fill=RED, anchor="mm")
+    d.text(s((726 + W - 40) / 2, (my0 + my1) / 2), f"IF WRONG -${lose:.2f}", font=f(27), fill=RED, anchor="mm")
 
     # ---- footer
     d.text(s(40, 1010), t.get("record") or f"{tier} paper record: no settled bets yet",
            font=f(21, False), fill=MUTED, anchor="lm")
-    d.text(s(40, 1046), "PAPER SIGNAL · NOT ADVICE", font=f(21), fill=GOLD, anchor="lm")
-    d.text(s(W - 40, 1046), "tap the title to open in the app", font=f(21), fill=TEXT, anchor="rm")
+    d.text(s(40, 1046), "PAPER RESEARCH ONLY", font=f(21), fill=GOLD, anchor="lm")
+    d.text(s(W - 40, 1046), "not a trade instruction", font=f(21), fill=TEXT, anchor="rm")
 
     buf = io.BytesIO()
     img.save(buf, "PNG", optimize=True)
@@ -228,5 +231,5 @@ if __name__ == "__main__":
     open("ticket_sample.png", "wb").write(render(dict(
         side="Up", price=0.52, fair=0.594, ev=0.061, secs_left=240, tier="JJ",
         window_label="Nov 25 · 5:40–5:45 AM ET", dist=18, ptb=58928.09, spot=58946.09,
-        prices=pr, fee_rate=0.095, record="JJ paper record: 14 bets · hit 64% vs 52% breakeven · +1.85/share")))
+        prices=pr, fee_rate=0.095, closes_at="5:41:30 AM", window_s=30, record="JJ paper record: 14 bets · hit 64% vs 52% breakeven · +1.85/share")))
     print("wrote ticket_sample.png")

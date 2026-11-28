@@ -168,7 +168,8 @@ def velocity(d):
              (f"Picks right {sum(right(r, W) for r in g)}/{len(g)} · same {len(same)} tickets at every delay: "
               + " · ".join(f"{x}s {sum(num(r.get(f'pnl10_{x}')) or 0 for r in same):+.2f}" for x in (5, 10, 20, 30))
               + f" · dropouts 5s→30s: {len(drop)} (right {sum(right(r, W) for r in drop)})") if g else "No settled alerts yet",
-             "v20 (Nov 27): the card now says CLOSED at 30s; later checks are kept as diagnostics and no longer edit the card."]
+             "v20 (Nov 27): the card now says CLOSED at 30s; later checks are kept as diagnostics and no longer edit the card.",
+             "v21 (Nov 28): wording only: 'model estimate' instead of 'win chance', no buy-now language, paper window close time on the card."]
     return {"ok": True, "lines": lines, "flags": len(bad), "data_n": len(t)}
 
 

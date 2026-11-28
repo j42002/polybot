@@ -353,7 +353,7 @@ def tune_lines(best, info):
 def calibration_lines(graded, res):
     """Is the model honest? 'When it said 85-95%, it won X%'. Uses the favored side's probability."""
     buckets = [(0.5, 0.6), (0.6, 0.7), (0.7, 0.8), (0.8, 0.9), (0.9, 1.01)]
-    out = ["", "## Is the win chance honest? (calibration)", "",
+    out = ["", "## Is the model estimate honest? (calibration)", "",
            "| Bot said | Checks | Separate markets | Said (avg) | Actually won |", "|---|---|---|---|---|"]
     for lo, hi in buckets:
         hits = n = 0

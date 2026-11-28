@@ -116,7 +116,7 @@ def card(s, path):
     tile(720, 360, 300, "P&L ($10 a ticket)", f"{s['pnl']:+.2f}", G if s["pnl"] > 0 else R if s["pnl"] < 0 else WH)
 
     y = 550
-    d.text((60 * S, y * S), "Is the win chance honest?", font=f(30, True), fill=WH)
+    d.text((60 * S, y * S), "Is the model estimate honest?", font=f(30, True), fill=WH)
     d.text((60 * S, (y + 44) * S), f"Model said → actually won · {s['rounds']} rounds, 1 check each", font=f(22), fill=GR)
     y += 90
     if not s["calib"]:
