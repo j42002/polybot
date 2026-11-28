@@ -377,6 +377,23 @@
    "title": "[Team ops] Polybot Brain \u2014 founder-approved specialist agent expansion",
    "url": "https://github.com/j42002/polybot/issues/11"
   },
+  "issue-12": {
+   "dirty": false,
+   "history": [
+    [
+     "received",
+     "2026-11-28T04:09:12Z"
+    ]
+   ],
+   "issue": 12,
+   "msg": "1576087543361966131",
+   "received": "2026-11-28T04:09:00Z",
+   "since": "2026-11-28T04:09:00Z",
+   "status": "received",
+   "summary": "Founder approves the eight proposed infrastructure upgrades. Link #8, #7, #11 and existing maker QC PR #9. Existing paper experiments remain frozen; no new strategy experiments or real trading authorized. Current registry (2026-11-28 02:36 UTC) marks all 13 specialist modules imp\u2026",
+   "title": "[Team ops] Phase 2 \u2014 advanced research infrastructure and command center",
+   "url": "https://github.com/j42002/polybot/issues/12"
+  },
   "issue-7": {
    "dirty": false,
    "history": [
