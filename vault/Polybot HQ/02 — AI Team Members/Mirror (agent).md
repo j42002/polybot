@@ -1,12 +1,12 @@
 ---
 polybot_auto: true
-updated: 2026-11-27 22:06 UTC
+updated: 2026-11-28 00:53 UTC
 tags: [agents, agents/development]
 ---
 # 🔵 Mirror
 
-> [!abstract] 🔵 development · self-test passed · definitions done; live cross-venue prices not collected yet
-> Venue fees and settlement definitions compared
+> [!abstract] 🔵 development · self-test passed · definitions done; waiting for the first live same-moment price pairs
+> Kalshi vs Polymarket US: fees, settlement and same-moment prices
 
 ## Latest findings
 | | Kalshi KXBTC15M | Polymarket US BTC 15m / 5m |
@@ -16,7 +16,7 @@ tags: [agents, agents/development]
 | Settlement | BRTI 60s average | BRTI 60s average |
 | Settlement agreement (Phase 1) | 696/696 windows identical | |
 Matched events on two venues are the same event, not independent evidence.
-Pending: a live price comparison needs a Polymarket US 15m quote at each maker post time (not collected).
+Live comparison: no snapshots yet (collector runs alongside each maker15 run).
 
 ## Links
 - [[Specialist Agents]] · [[System Blueprint]] · [[Brain Overview]]

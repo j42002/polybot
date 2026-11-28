@@ -1,12 +1,12 @@
 ---
 polybot_auto: true
-updated: 2026-11-28 00:49 UTC
+updated: 2026-11-28 00:53 UTC
 tags: [team, agents, index]
 ---
 # 🧭 Specialist Agents
 
 > [!info] 🟢 implemented + tested · 🔵 in development · 🟡 pending · 🔴 blocked
-> 🟢 means the agent's self-test with planted failures passed AND it ran on real data in the latest run (2026-11-28 00:49 UTC). These are deterministic Python checks, not separate AI models.
+> 🟢 means the agent's self-test with planted failures passed AND it ran on real data in the latest run (2026-11-28 00:52 UTC). These are deterministic Python checks, not separate AI models.
 
 | | Agent | Folded in | Job | Self-test |
 |---|---|---|---|---|
@@ -18,7 +18,7 @@ tags: [team, agents, index]
 | 🟢 | [[Nemesis (agent)]] | Loss Intelligence | Red-team challenges, every loss explained | passed |
 | 🟢 | [[Oracle (agent)]] | - | Stress tests and simulated screening outcomes | passed |
 | 🟢 | [[Chronos (agent)]] | - | Coverage timeline, gaps, versions, provenance | passed |
-| 🔵 | [[Mirror (agent)]] | - | Venue fees and settlement definitions compared | passed |
+| 🔵 | [[Mirror (agent)]] | - | Kalshi vs Polymarket US: fees, settlement and same-moment prices | passed |
 | 🟢 | [[Overwatch (agent)]] | Mechanic | Workflow failures, data freshness, relay health | passed |
 | 🟢 | [[Genesis (agent)]] | - | Pre-registration template and validator | passed |
 | 🟢 | [[Evolution (agent)]] | - | Proposal-only hypotheses from measured patterns | passed |
