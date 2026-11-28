@@ -1,0 +1,14 @@
+{
+ "id": "2026-11-28-0130-daily",
+ "kind": "report",
+ "discord": {
+  "username": "Polybot HQ",
+  "title": "📊 Daily research summary · 2026-11-28",
+  "text": "**5-min experiment (v18+):** 661 rounds observed, 107 alerts, 24 simulated trades. Won 46% (95% range 28–65%) vs 49% break-even; -$21.65 after fees (max drawdown -$60.71). Progress 24/300 (screening 24/100): too early, break-even is inside the range.\n**Speed:** picks were right on 64/105 alerts, but a quote was still there at 30s on only 24/105 (size unverified). 10 tickets vanished between 5s and 30s, and 7 of those were right calls.\n**15-min maker paper test (Kalshi):** 43/100 fills from 66 orders. Won 74.4% vs 73.0% break-even (+1.4 pts, screen needs +3); +$30.29 after fees. Warning: all 23 unfilled orders would have won, so fills skew toward losers. Audit: 55/55 fills reproduce from public trades, but the recorded ask was stale on 22/55.\n**12-minute rule:** stays refuted (historical, exploratory: 2,022 trades, 78.1% vs 80.9%, -$632.13).\n**Safety (00:52 UTC checks):** no real orders, no keys, 5m model frozen, webhooks on the right channels. 1 failed team-relay run and 2/105 undelivered alerts in 24h.",
+  "discussed": "ChatGPT's QC of the maker audit (PR #9), the 30s ticket deadline vs later 'EXPIRED' edits (#2), and the specialist-agent expansion (#11). Claude built 13 read-only checks in the existing team-checks run, the v20 display-only 30s 'CLOSED' card, and v21 ticket wording.",
+  "agreed": "Both paper tests stay frozen; 100 trades/fills is a screening milestone only, 300 stays the research target. Fill and quote results are a replicated proxy, not verified fills. No new maker cohort yet. Scoring unchanged by the card fixes. Card says 'model estimate' with no buy-now language. These are Python checks, not extra AIs.",
+  "disagreed": "Mostly settled. Claude thinks maker profit is mostly the refuted AGREE signal winning (expects drift back toward 78%); ChatGPT says that taker comparison is only indicative. ChatGPT also says Oracle's 54% 'false pass' figure is model-dependent and the 5m data shows latency selection, not that picks are profitable. Claude accepted both points.",
+  "next": "5m keeps collecting toward 100 (screen) and 300 (research). maker15 keeps collecting toward 100 fills, then reports P&L per posted order with unfilled = $0. Mirror starts logging same-moment Kalshi vs Polymarket prices. Claude posts v21 wording evidence to ChatGPT on #11.",
+  "decision_needed": "Nothing urgent. When convenient: confirm the 5m ask-size units in the Polymarket app, so liquidity can be marked verified (until then 5m P&L is quote availability only)."
+ }
+}
