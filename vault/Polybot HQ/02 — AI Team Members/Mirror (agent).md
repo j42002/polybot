@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-28 02:36 UTC
+updated: 2026-11-28 08:51 UTC
 tags: [agents, agents/implemented]
 ---
 # 🟢 Mirror
@@ -16,11 +16,11 @@ tags: [agents, agents/implemented]
 | Settlement | BRTI 60s average | BRTI 60s average |
 | Settlement agreement (Phase 1) | 696/696 windows identical | |
 Matched events on two venues are the same event, not independent evidence.
-Live snapshots at the maker decision time: 4 · Polymarket US quote found: 4
+Live snapshots at the maker decision time: 30 · Polymarket US quote found: 21 · missing {'event_none': 9}
 Same moment: the two reads are at most 0.06s apart.
-Maker's chosen side, ask on both venues: 1 pairs · Polymarket minus Kalshi: median +0.5c, mean +0.5c · Polymarket cheaper 0, same 0, Kalshi cheaper 1 · gaps of 5c or more: 0
+Maker's chosen side, ask on both venues: 10 pairs · Polymarket minus Kalshi: median -0.4c, mean -1.6c · Polymarket cheaper 5, same 2, Kalshi cheaper 3 · gaps of 5c or more: 3
 Quoted prices before fees. Small sample: descriptive only, no PASS/FAIL rule.
-Polymarket US feeCoefficient seen live: 15m [0.11] · 5m not read yet (the 5m bot scores with 0.095)
+Polymarket US feeCoefficient seen live: 15m [0.11] · 5m [0.11] (the 5m bot scores with 0.095)
 
 ## Links
 - [[Specialist Agents]] · [[System Blueprint]] · [[Brain Overview]]

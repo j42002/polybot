@@ -1,12 +1,12 @@
 ---
 polybot_auto: true
-updated: 2026-11-28 02:36 UTC
+updated: 2026-11-28 08:51 UTC
 tags: [team, agents, index]
 ---
 # 🧭 Specialist Agents
 
 > [!info] 🟢 implemented + tested · 🔵 in development · 🟡 pending · 🔴 blocked
-> 🟢 means the agent's self-test with planted failures passed AND it ran on real data in the latest run (2026-11-28 02:36 UTC). These are deterministic Python checks, not separate AI models.
+> 🟢 means the agent's self-test with planted failures passed AND it ran on real data in the latest run (2026-11-28 08:51 UTC). These are deterministic Python checks, not separate AI models.
 
 | | Agent | Folded in | Job | Self-test |
 |---|---|---|---|---|

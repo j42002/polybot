@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-28 02:36 UTC
+updated: 2026-11-28 08:51 UTC
 tags: [agents, agents/implemented]
 ---
 # 🟢 Hawk
@@ -12,15 +12,15 @@ tags: [agents, agents/implemented]
 ## Latest findings
 | Test | Regime | posted | filled | win of fills | P&L per posted |
 |---|---|---|---|---|---|
-| maker | 1-min BTC move low | 23 | 17 | 65% | -1.91 |
-| maker | 1-min BTC move mid | 22 | 13 | 69% | +1.03 |
-| maker | 1-min BTC move high | 22 | 14 | 93% | +2.35 |
-| maker | distance to target low | 23 | 19 | 63% | +1.69 |
-| maker | distance to target mid | 22 | 17 | 76% | -0.85 |
-| maker | distance to target high | 22 | 8 | 100% | +0.47 |
-| 5m | BTC volatility low | 36 alerts | 11 buyable at 30s | picks right 53% | -32.16 total |
-| 5m | BTC volatility mid | 36 alerts | 7 buyable at 30s | picks right 61% | -0.32 total |
-| 5m | BTC volatility high | 35 alerts | 6 buyable at 30s | picks right 71% | +10.83 total |
+| maker | 1-min BTC move low | 28 | 21 | 67% | -1.83 |
+| maker | 1-min BTC move mid | 27 | 16 | 75% | +1.04 |
+| maker | 1-min BTC move high | 26 | 16 | 94% | +2.26 |
+| maker | distance to target low | 28 | 22 | 64% | +1.39 |
+| maker | distance to target mid | 27 | 21 | 81% | -0.55 |
+| maker | distance to target high | 26 | 10 | 100% | +0.46 |
+| 5m | BTC volatility low | 41 alerts | 13 buyable at 30s | picks right 56% | -31.39 total |
+| 5m | BTC volatility mid | 40 alerts | 6 buyable at 30s | picks right 62% | +30.41 total |
+| 5m | BTC volatility high | 39 alerts | 8 buyable at 30s | picks right 69% | -10.37 total |
 Cells are small and regimes were cut after the fact: description, not findings.
 
 ## Links
