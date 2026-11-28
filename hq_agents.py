@@ -446,7 +446,7 @@ def mirror(d):
     import mirror15
     m = re.search(r"same winner (\d+)/(\d+)", d.get("r15", ""))
     lines = ["| | Kalshi KXBTC15M | Polymarket US BTC 15m / 5m |", "|---|---|---|",
-             f"| Taker fee | round-up of {KALSHI_TAKER} x C x P x (1-P) | {US_FEE} x P x (1-P) per share |",
+             f"| Taker fee | round-up of {KALSHI_TAKER} x C x P x (1-P) | feeCoefficient x P x (1-P) per share (5m bot assumes {US_FEE}) |",
              f"| Maker fee | only on listed series ({KALSHI_MAKER}); this series reads 'quadratic' (none) | not modelled (taker-only tests) |",
              "| Settlement | BRTI 60s average | BRTI 60s average |",
              f"| Settlement agreement (Phase 1) | {m.group(1)}/{m.group(2)} windows identical | |" if m else "| Settlement agreement | not found in report | |",

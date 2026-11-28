@@ -31,7 +31,7 @@ QUOTES = os.path.join(OUT, "quotes.csv")
 ORDERS = os.path.join(HERE, "data", "maker15", "orders.csv")
 FIELDS = ["ticker", "open_ts", "decision_ts", "k_ts", "k_up_ask", "k_dn_ask", "k_up_bid", "k_dn_bid", "k_target",
           "pm_slug", "pm_ts", "pm_status", "pm_src", "pm_up_ask", "pm_dn_ask", "pm_up_bid", "pm_dn_bid",
-          "pm_up_size", "pm_dn_size", "pm_ptb", "pm_fee", "gap_s", "logged_utc"]
+          "pm_up_size", "pm_dn_size", "pm_ptb", "pm_fee", "pm5_slug", "pm5_fee", "gap_s", "logged_utc"]
 
 
 def num(x):
@@ -111,6 +111,21 @@ def pm_quote(s, open_ts):
     return out
 
 
+def pm5_fee(s, now):
+    """Read-only: feeCoefficient of the current Polymarket US BTC 5m market (the 5m bot scores with 0.095)."""
+    t5 = now // 300 * 300
+    slug = "btc-updown-5m-" + datetime.fromtimestamp(t5, timezone.utc).strftime("%Y-%m-%d-%H%Mz")
+    r = get(s, f"{US_GATEWAY}/events/slug/{slug}")
+    try:
+        return {"pm5_slug": slug, "pm5_fee": num(r.json()["event"]["markets"][0].get("feeCoefficient")) or ""}
+    except Exception:
+        return {"pm5_slug": slug, "pm5_fee": ""}
+
+
+def fee_set(quotes, key):
+    return sorted({num(q.get(key)) for q in quotes if num(q.get(key)) is not None})
+
+
 def load(path):
     if not os.path.exists(path):
         return []
@@ -155,6 +170,7 @@ def live(minutes):
             row |= pm_quote(s, o)
             row["pm_ts"] = round(pm_ts, 2)
             row["gap_s"] = round(pm_ts - k_ts, 2)
+            row |= pm5_fee(s, int(time.time()))      # fee check only: the live 5m market's feeCoefficient
             row["logged_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             rows[m["ticker"]] = row
             save(list(rows.values()))
@@ -193,7 +209,7 @@ def compare(quotes, orders):
            "side_diff_mean": round(statistics.mean(diffs), 4) if diffs else None,
            "pm_cheaper": sum(d < 0 for d in diffs), "same": sum(d == 0 for d in diffs), "k_cheaper": sum(d > 0 for d in diffs),
            "abs_ge_5c": sum(abs(d) >= 0.05 for d in diffs),
-           "gap_max": max(gaps) if gaps else None}
+           "gap_max": max(gaps) if gaps else None, "fee15": fee_set(quotes, "pm_fee"), "fee5": fee_set(quotes, "pm5_fee")}
     return res
 
 
@@ -207,15 +223,18 @@ def summary_lines(res):
         L += [f"Maker's chosen side, ask on both venues: {res['pairs']} pairs · Polymarket minus Kalshi: median "
               f"{res['side_diff_median'] * 100:+.1f}c, mean {res['side_diff_mean'] * 100:+.1f}c · Polymarket cheaper "
               f"{res['pm_cheaper']}, same {res['same']}, Kalshi cheaper {res['k_cheaper']} · gaps of 5c or more: {res['abs_ge_5c']}",
-              "Quoted prices before fees (Kalshi maker fee none on this series; Polymarket US taker fee 0.095 x P x (1-P)). "
-              "Small sample: descriptive only, no PASS/FAIL rule."]
+              "Quoted prices before fees. Small sample: descriptive only, no PASS/FAIL rule."]
+    if res.get("fee15"):
+        L.append(f"Polymarket US feeCoefficient seen live: 15m {res['fee15']}"
+                 + (f" · 5m {res['fee5']}" if res.get("fee5") else " · 5m not read yet")
+                 + " (the 5m bot scores with 0.095)")
     return [x for x in L if x]
 
 
 def selftest():
     assert pm_event_slug(1795703400) == "btc-updown-15m-2026-11-26-1430z", pm_event_slug(1795703400)
     assert ok(0.0) is None and ok(1.0) is None and ok(0.42) == 0.42 and num({"value": "0.5"}) == 0.5
-    q = [{"ticker": "A", "pm_status": "ok", "k_up_ask": "0.40", "k_dn_ask": "0.61", "pm_up_ask": "0.37", "pm_dn_ask": "0.64", "gap_s": "0.4"},
+    q = [{"ticker": "A", "pm_status": "ok", "k_up_ask": "0.40", "k_dn_ask": "0.61", "pm_up_ask": "0.37", "pm_dn_ask": "0.64", "gap_s": "0.4", "pm_fee": "0.11", "pm5_fee": "0.095"},
          {"ticker": "B", "pm_status": "ok", "k_up_ask": "0.70", "k_dn_ask": "0.31", "pm_up_ask": "0.72", "pm_dn_ask": "0.30", "gap_s": "0.6"},
          {"ticker": "C", "pm_status": "event_404", "k_up_ask": "0.5", "k_dn_ask": "0.5", "gap_s": "0.2"},
          {"ticker": "D", "pm_status": "ok", "k_up_ask": "0.55", "k_dn_ask": "0.46", "pm_up_ask": "0.55", "pm_dn_ask": "0.46", "gap_s": "0.3"},
@@ -228,6 +247,8 @@ def selftest():
     assert r["side_diff_median"] == -0.01 and r["up_pairs"] == 4 and r["gap_max"] == 0.6, r
     assert compare([], [])["snapshots"] == 0 and "no snapshots" in summary_lines(compare([], []))[0]
     assert any("3 pairs" in x for x in summary_lines(r))
+    assert r["fee15"] == [0.11] and r["fee5"] == [0.095], r
+    assert any("15m [0.11] · 5m [0.095]" in x for x in summary_lines(r)), summary_lines(r)
     print("MIRROR SELFTEST OK")
 
 
