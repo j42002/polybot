@@ -6,7 +6,7 @@ on:
     - cron: "11 1 * * *"
   push:
     branches: [main]
-    paths: ["team_checks.py", "hq_agents.py", "blueprint.py", ".github/workflows/team-checks.yml"]
+    paths: ["team_checks.py", "hq_agents.py", "blueprint.py", "mirror15.py", ".github/workflows/team-checks.yml"]
   workflow_dispatch:
 permissions:
   contents: write

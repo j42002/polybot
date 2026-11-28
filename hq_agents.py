@@ -127,6 +127,7 @@ def load():
          "loops": [r for r in rows("data/loop_stats.csv") if ver(r) >= 18], "closes": rows("data/closes.csv"),
          "results": rows("data/results.csv"), "m15": rows("data/maker15/orders.csv"),
          "audit": rows("data/maker15_audit/audit.csv"), "r15": read("data/15m/report.md"),
+         "mirror_q": rows("data/mirror15/quotes.csv"),
          "prereg": {"15m Phase 1": read("data/15m/PREREG.md"), "maker15": read("data/maker15/PREREG.md")},
          "relay": json.loads(read("lab/relay_state.json") or "{}")}
     return d
@@ -440,16 +441,21 @@ def chronos(d):
 
 
 def mirror(d):
-    """Venue definitions side by side. Live cross-venue price comparison is not built yet."""
-    m = re.search(r"same winner (\d+)/(\d+)", d["r15"])
+    """Venue definitions side by side, plus the live same-moment price log from mirror15.py.
+    Status stays in development until real paired snapshots exist; it is descriptive only (no PASS/FAIL)."""
+    import mirror15
+    m = re.search(r"same winner (\d+)/(\d+)", d.get("r15", ""))
     lines = ["| | Kalshi KXBTC15M | Polymarket US BTC 15m / 5m |", "|---|---|---|",
              f"| Taker fee | round-up of {KALSHI_TAKER} x C x P x (1-P) | {US_FEE} x P x (1-P) per share |",
              f"| Maker fee | only on listed series ({KALSHI_MAKER}); this series reads 'quadratic' (none) | not modelled (taker-only tests) |",
              "| Settlement | BRTI 60s average | BRTI 60s average |",
              f"| Settlement agreement (Phase 1) | {m.group(1)}/{m.group(2)} windows identical | |" if m else "| Settlement agreement | not found in report | |",
-             "Matched events on two venues are the same event, not independent evidence.",
-             "Pending: a live price comparison needs a Polymarket US 15m quote at each maker post time (not collected)."]
-    return {"ok": bool(m), "lines": lines, "flags": 0, "data_n": 1 if m else 0, "partial": True}
+             "Matched events on two venues are the same event, not independent evidence."]
+    res = mirror15.compare(d.get("mirror_q") or [], d.get("m15") or [])
+    lines += mirror15.summary_lines(res)
+    live = res["pairs"] > 0
+    return {"ok": bool(m), "lines": lines, "flags": 0, "data_n": res["pairs"] if m else 0, "partial": not live,
+            "live": res}
 
 
 def gh_get(path, params=None):
@@ -619,9 +625,13 @@ def _t_nemesis():
 
 
 def _t_mirror():
-    ok = mirror({"r15": "- End price difference: median $0.00 · same winner 5/7"})
+    r15 = "- End price difference: median $0.00 · same winner 5/7"
+    ok = mirror({"r15": r15})
     bad = mirror({"r15": "no such line"})
-    return any("5/7 windows identical" in l for l in ok["lines"]) and not bad["ok"]
+    q = [{"ticker": "A", "pm_status": "ok", "k_up_ask": "0.40", "k_dn_ask": "0.61", "pm_up_ask": "0.47", "pm_dn_ask": "0.54", "gap_s": "0.5"}]
+    live = mirror({"r15": r15, "mirror_q": q, "m15": [{"ticker": "A", "side": "Up"}]})
+    return (any("5/7 windows identical" in l for l in ok["lines"]) and not bad["ok"] and ok["partial"]
+            and not live["partial"] and live["data_n"] == 1 and any("+7.0c" in l for l in live["lines"]))
 
 
 def _t_evolution():
@@ -670,7 +680,7 @@ AGENTS = [
     ("nemesis", "Nemesis", "Loss Intelligence", "Red-team challenges, every loss explained"),
     ("oracle", "Oracle", "", "Stress tests and simulated screening outcomes"),
     ("chronos", "Chronos", "", "Coverage timeline, gaps, versions, provenance"),
-    ("mirror", "Mirror", "", "Venue fees and settlement definitions compared"),
+    ("mirror", "Mirror", "", "Kalshi vs Polymarket US: fees, settlement and same-moment prices"),
     ("overwatch", "Overwatch", "Mechanic", "Workflow failures, data freshness, relay health"),
     ("genesis", "Genesis", "", "Pre-registration template and validator"),
     ("evolution", "Evolution", "", "Proposal-only hypotheses from measured patterns"),
@@ -702,7 +712,7 @@ def main(post=True):
         if not tests.get(k):
             st, why = "blocked", "self-test failed this run"
         elif r.get("partial"):
-            st, why = "development", "definitions done; live cross-venue prices not collected yet"
+            st, why = "development", "definitions done; waiting for the first live same-moment price pairs"
         elif r["ok"] and r["data_n"] > 0:
             st, why = "implemented", ""
         elif r["ok"]:

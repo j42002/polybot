@@ -4,7 +4,7 @@ name: maker15 (limit-order paper test, BTC 15m)
 on:
   push:
     branches: [main]
-    paths: ["maker15.py", ".github/workflows/maker15.yml"]
+    paths: ["maker15.py", "mirror15.py", ".github/workflows/maker15.yml"]
   schedule:
     - cron: "5,25,45 * * * *"
   workflow_dispatch:
@@ -70,3 +70,41 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run maker15.yml --repo ${{ github.repository }} --ref main -f mode=live
+
+  mirror:
+    # Mirror (read-only, observation only): at each maker decision time, read Kalshi and Polymarket US
+    # prices for the same 15m window, back to back. Separate job: it does not run or change maker15.py,
+    # its steps or data/maker15/. Writes only data/mirror15/. If it fails, the maker job is unaffected.
+    if: ${{ github.event.inputs.mode != 'replay' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: offline self-test
+        run: python mirror15.py selftest
+      - name: same-moment snapshots (55 min)
+        run: python mirror15.py live 55
+      - name: commit data/mirror15 only
+        if: always()
+        run: |
+          [ -d data/mirror15 ] || exit 0
+          git config user.name "polybot"
+          git config user.email "polybot@users.noreply.github.com"
+          rm -rf /tmp/mir && cp -r data/mirror15 /tmp/mir
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            mkdir -p data/mirror15 && cp /tmp/mir/* data/mirror15/
+            git add data/mirror15
+            git diff --cached --quiet && exit 0
+            git commit -q -m "mirror15 data $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push -q origin HEAD:main && exit 0
+            sleep $((i * 4))
+          done
+          exit 1
