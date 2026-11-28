@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-27 22:06 UTC
+updated: 2026-11-28 00:49 UTC
 tags: [agents, agents/implemented]
 ---
 # 🟢 Nemesis
@@ -11,11 +11,11 @@ tags: [agents, agents/implemented]
 
 ## Latest findings
 **Challenges**
-- Maker signal right on 86% of 58 posted orders, but the same AGREE signal won 78.1% (break-even 80.9%) on 2022 historical trades. Expect regression toward history.
-- Adverse selection: fill rate 62% when right vs 100% when wrong. Unfilled 'wins' are not earnings.
-- Price risk: 17 fills at 85c+ earn about +0.95 each when right; one loss costs up to -9.90. A high win rate on expensive contracts can still lose.
-- Independence: 58 orders over 2 calendar day(s). Few independent periods: one regime can explain it all.
-- 5m survivorship: picks right on 61% of all alerts but 40% of the ones still buyable at 30s.
+- Maker signal right on 83% of 65 posted orders, but the same AGREE signal won 78.1% (break-even 80.9%) on 2022 historical trades. Expect regression toward history.
+- Adverse selection: fill rate 59% when right vs 100% when wrong. Unfilled 'wins' are not earnings.
+- Price risk: 17 fills at 85c+ earn about +0.95 each when right; one loss costs up to -9.96. A high win rate on expensive contracts can still lose.
+- Independence: 65 orders over 2 calendar day(s). Few independent periods: one regime can explain it all.
+- 5m survivorship: picks right on 61% of all alerts but 46% of the ones still buyable at 30s.
 
 **Every loss (Loss Intelligence)**
 | Test | Market | Entry | P&L | Time | Context | Context | Fill |
@@ -28,6 +28,9 @@ tags: [agents, agents/implemented]
 | maker | M-26NOV271215-15 | Down at 0.61 x16 | -9.76 | 12h ET | move 22 | dist 31 | filled +1s |
 | maker | M-26NOV271545-45 | Down at 0.95 x10 | -9.50 | 15h ET | move 9 | dist 68 | filled +45s |
 | maker | M-26NOV271600-00 | Up at 0.56 x17 | -9.52 | 15h ET | move 7 | dist 4 | filled +1s |
+| maker | M-26NOV271700-00 | Up at 0.66 x15 | -9.90 | 16h ET | move 17 | dist 2 | filled +4s |
+| maker | M-26NOV271745-45 | Down at 0.83 x12 | -9.96 | 17h ET | move 6 | dist 55 | filled +1s |
+| maker | M-26NOV271845-45 | Down at 0.55 x18 | -9.90 | 18h ET | move 1 | dist 10 | filled +1s |
 | 5m | 1-25-2005z | Up at 0.3 | -10.66 | 15h ET | alert 0.42 cap 0.52 | 237.3s left | - |
 | 5m | 1-25-2240z | Up at 0.33 | -10.64 | 17h ET | alert 0.37 cap 0.5 | 205.2s left | - |
 | 5m | 1-26-0755z | Up at 0.39 | -10.58 | 02h ET | alert 0.37 cap 0.41 | 238.1s left | - |
@@ -40,6 +43,7 @@ tags: [agents, agents/implemented]
 | 5m | 1-27-1930z | Down at 0.41 | -10.56 | 14h ET | alert 0.53 cap 0.61 | 236.9s left | - |
 | 5m | 1-27-1955z | Down at 0.49 | -10.48 | 14h ET | alert 0.5 cap 0.54 | 206.9s left | - |
 | 5m | 1-27-2025z | Down at 0.43 | -10.54 | 15h ET | alert 0.44 cap 0.5 | 206.9s left | - |
+| 5m | 1-27-2345z | Down at 0.46 | -10.51 | 18h ET | alert 0.56 cap 0.63 | 206.9s left | - |
 
 ## Links
 - [[Specialist Agents]] · [[System Blueprint]] · [[Brain Overview]]

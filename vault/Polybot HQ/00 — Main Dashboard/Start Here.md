@@ -1,6 +1,6 @@
 ---
 polybot_auto: true
-updated: 2026-11-27 23:13 UTC
+updated: 2026-11-28 00:49 UTC
 tags: [dashboard]
 ---
 # 🏠 Polybot HQ
@@ -10,7 +10,7 @@ tags: [dashboard]
 
 ## Right now
 > [!example] ⏱️ 5-minute experiment
-> **23 / 300** separate settled trades · P&L -11.14 on 23 trades of $10 · too early to judge
+> **24 / 300** separate settled trades · P&L -21.65 on 24 trades of $10 · too early to judge
 > → [[5-Minute Experiment v18]]
 
 > [!failure] 🕒 15-minute '12-minute rule'

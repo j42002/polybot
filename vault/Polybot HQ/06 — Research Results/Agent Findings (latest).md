@@ -1,13 +1,13 @@
 ---
 polybot_auto: true
-updated: 2026-11-27 22:06 UTC
+updated: 2026-11-28 00:49 UTC
 tags: [results, agents]
 ---
 # 🧭 Agent Findings (latest)
 
 # Polybot HQ specialist agents
 
-Generated 2026-11-27 22:06 UTC. Deterministic Python checks, read-only, $0. Status 🟢 = self-test with planted failures passed AND the check ran on real data in this run. Nothing here changes a strategy or experiment.
+Generated 2026-11-28 00:49 UTC. Deterministic Python checks, read-only, $0. Status 🟢 = self-test with planted failures passed AND the check ran on real data in this run. Nothing here changes a strategy or experiment.
 
 | | Agent | Folded in | Job | Self-test | Flags |
 |---|---|---|---|---|---|
@@ -29,62 +29,63 @@ Existing roles keep their duties: Data Auditor (team_checks.py), Quant Analyst (
 
 ## Velocity (+ Expiration Guard)
 
-Delivered alerts watched: 95 · first price-crossing slot: 5s 66, 10s 2, 20s 4, 30s 3, 45s 2, 60s 3, none 15
-Crossed only after the 30s deadline (45/60s): 5 · of those scored EXPIRED at 30s despite a 30s ask under the cap: **0** (must be 0)
+Delivered alerts watched: 103 · first price-crossing slot: 5s 69, 10s 2, 20s 5, 30s 3, 45s 3, 60s 4, none 17
+Crossed only after the 30s deadline (45/60s): 7 · of those scored EXPIRED at 30s despite a 30s ask under the cap: **0** (must be 0)
 30s check lateness: worst +0.90s (trusted up to +3s) · rows with no 30s check: 0
-Discord delivery: median 684 ms, worst 2244 ms
-Picks right 58/95 · same 20 tickets at every delay: 5s -44.85 · 10s -44.09 · 20s -43.39 · 30s -44.28 · dropouts 5s→30s: 9 (right 7)
+Discord delivery: median 661 ms, worst 2244 ms
+Picks right 63/103 · same 24 tickets at every delay: 5s -24.40 · 10s -26.33 · 20s -21.24 · 30s -21.65 · dropouts 5s→30s: 10 (right 7)
 v20 (Nov 27): the card now says CLOSED at 30s; later checks are kept as diagnostics and no longer edit the card.
+v21 (Nov 28): wording only: 'model estimate' instead of 'win chance', no buy-now language, paper window close time on the card.
 
 ## Titan (+ Liquidity Intelligence)
 
-5m: 30s ask size logged on 95/95 alerts · size >= $10 at 30s: 90 yes / 5 no / 0 unknown. **Size units are not verified against the app, so 5m P&L is quote-availability only.**
-Maker: through-volume / order size on fills: min 17x, median 15198x (volume never the constraint)
+5m: 30s ask size logged on 103/103 alerts · size >= $10 at 30s: 98 yes / 5 no / 0 unknown. **Size units are not verified against the app, so 5m P&L is quote-availability only.**
+Maker: through-volume / order size on fills: min 17x, median 21204x (volume never the constraint)
 Maker quote freshness (from the read-only audit): recorded ask >5c from same-second prints on 22/55 orders; marketable at post 7/55
 
 ## Ghost (+ Market Stability Monitor (data))
 
-5m checks with no market quote: 84/3031 (2.8%)
-Up+Down asks outside 0.95-1.15 (broken or stale book): 0/2688
-Coinbase proxy disagrees with the official settlement: 16/605 rounds (proxy only; official winner is used for scoring)
-Runs whose longest BTC price gap exceeded 10s: 3/58
+5m checks with no market quote: 92/3193 (2.9%)
+Up+Down asks outside 0.95-1.15 (broken or stale book): 0/2828
+Coinbase proxy disagrees with the official settlement: 20/638 rounds (proxy only; official winner is used for scoring)
+Runs whose longest BTC price gap exceeded 10s: 3/61
 Maker: stale recorded quotes 22/55 (see Titan)
 
 ## Hawk (+ Market Stability Monitor (regimes))
 
 | Test | Regime | posted | filled | win of fills | P&L per posted |
 |---|---|---|---|---|---|
-| maker | 1-min BTC move low | 20 | 16 | 69% | -1.60 |
-| maker | 1-min BTC move mid | 19 | 10 | 80% | +0.89 |
-| maker | 1-min BTC move high | 19 | 13 | 92% | +2.68 |
-| maker | distance to target low | 20 | 18 | 67% | +1.37 |
-| maker | distance to target mid | 19 | 13 | 85% | -0.10 |
-| maker | distance to target high | 19 | 8 | 100% | +0.54 |
-| 5m | BTC volatility low | 32 alerts | 9 buyable at 30s | picks right 50% | -29.73 total |
-| 5m | BTC volatility mid | 32 alerts | 6 buyable at 30s | picks right 62% | -14.15 total |
-| 5m | BTC volatility high | 31 alerts | 5 buyable at 30s | picks right 71% | -0.40 total |
+| maker | 1-min BTC move low | 22 | 17 | 59% | -2.46 |
+| maker | 1-min BTC move mid | 22 | 12 | 75% | +1.48 |
+| maker | 1-min BTC move high | 21 | 14 | 93% | +2.47 |
+| maker | distance to target low | 22 | 18 | 61% | +1.69 |
+| maker | distance to target mid | 22 | 17 | 76% | -0.79 |
+| maker | distance to target high | 21 | 8 | 100% | +0.49 |
+| 5m | BTC volatility low | 35 alerts | 11 buyable at 30s | picks right 49% | -32.16 total |
+| 5m | BTC volatility mid | 34 alerts | 7 buyable at 30s | picks right 65% | -0.32 total |
+| 5m | BTC volatility high | 34 alerts | 6 buyable at 30s | picks right 71% | +10.83 total |
 Cells are small and regimes were cut after the fact: description, not findings.
 
 ## Judge (+ Confidence Auditor, Profit Validator)
 
-**Maker (15m)**: 39 fills / 58 posted · screening 39/100 fills
-P&L +35.91 · **per posted order +0.62** (95% by 4-hour blocks: -0.50 to +1.69, 9 blocks)
-Win of fills 31/39 = 79.5% (95% 64%-89%) vs break-even 74.5% · contract-weighted 75.6% vs 69.0%
+**Maker (15m)**: 43 fills / 65 posted · screening 43/100 fills
+P&L +30.29 · **per posted order +0.47** (95% by 4-hour blocks: -0.58 to +1.68, 9 blocks)
+Win of fills 32/43 = 74.4% (95% 60%-85%) vs break-even 73.0% · contract-weighted 71.5% vs 66.6%
 Profit Validator: SIMULATED. Fills are a trade-through proxy (conservative on volume) but posted limits used stale quotes on some orders; queue position unknown. Not executable-verified.
-**5-minute**: 20 simulated trades from 95 alerts · screening 20/100 · research 20/300
-P&L -44.28 · per alert -0.466 · win 8/20 (22%-61%) vs break-even 49%
+**5-minute**: 24 simulated trades from 103 alerts · screening 24/100 · research 24/300
+P&L -21.65 · per alert -0.210 · win 11/24 (28%-65%) vs break-even 49%
 Profit Validator: SIMULATED quote availability at 30s; ask size units unverified. Not executable-verified.
-Confidence Auditor (model estimate vs outcome, 1 check per round): 50-60%: won 128/234 (48%-61%) · 60-70%: won 125/192 (58%-71%) · 70-80%: won 95/127 (67%-82%) · 80-90%: won 62/69 (81%-95%)
-Brier: model 0.2104 vs market 0.2184 on 592 rounds (lower = sharper; sharper is not profit)
+Confidence Auditor (model estimate vs outcome, 1 check per round): 50-60%: won 134/244 (49%-61%) · 60-70%: won 131/204 (57%-70%) · 70-80%: won 99/133 (66%-81%) · 80-90%: won 66/74 (80%-94%)
+Brier: model 0.2118 vs market 0.2182 on 622 rounds (lower = sharper; sharper is not profit)
 
 ## Nemesis (+ Loss Intelligence)
 
 **Challenges**
-- Maker signal right on 86% of 58 posted orders, but the same AGREE signal won 78.1% (break-even 80.9%) on 2022 historical trades. Expect regression toward history.
-- Adverse selection: fill rate 62% when right vs 100% when wrong. Unfilled 'wins' are not earnings.
-- Price risk: 17 fills at 85c+ earn about +0.95 each when right; one loss costs up to -9.90. A high win rate on expensive contracts can still lose.
-- Independence: 58 orders over 2 calendar day(s). Few independent periods: one regime can explain it all.
-- 5m survivorship: picks right on 61% of all alerts but 40% of the ones still buyable at 30s.
+- Maker signal right on 83% of 65 posted orders, but the same AGREE signal won 78.1% (break-even 80.9%) on 2022 historical trades. Expect regression toward history.
+- Adverse selection: fill rate 59% when right vs 100% when wrong. Unfilled 'wins' are not earnings.
+- Price risk: 17 fills at 85c+ earn about +0.95 each when right; one loss costs up to -9.96. A high win rate on expensive contracts can still lose.
+- Independence: 65 orders over 2 calendar day(s). Few independent periods: one regime can explain it all.
+- 5m survivorship: picks right on 61% of all alerts but 46% of the ones still buyable at 30s.
 
 **Every loss (Loss Intelligence)**
 | Test | Market | Entry | P&L | Time | Context | Context | Fill |
@@ -97,6 +98,9 @@ Brier: model 0.2104 vs market 0.2184 on 592 rounds (lower = sharper; sharper is 
 | maker | M-26NOV271215-15 | Down at 0.61 x16 | -9.76 | 12h ET | move 22 | dist 31 | filled +1s |
 | maker | M-26NOV271545-45 | Down at 0.95 x10 | -9.50 | 15h ET | move 9 | dist 68 | filled +45s |
 | maker | M-26NOV271600-00 | Up at 0.56 x17 | -9.52 | 15h ET | move 7 | dist 4 | filled +1s |
+| maker | M-26NOV271700-00 | Up at 0.66 x15 | -9.90 | 16h ET | move 17 | dist 2 | filled +4s |
+| maker | M-26NOV271745-45 | Down at 0.83 x12 | -9.96 | 17h ET | move 6 | dist 55 | filled +1s |
+| maker | M-26NOV271845-45 | Down at 0.55 x18 | -9.90 | 18h ET | move 1 | dist 10 | filled +1s |
 | 5m | 1-25-2005z | Up at 0.3 | -10.66 | 15h ET | alert 0.42 cap 0.52 | 237.3s left | - |
 | 5m | 1-25-2240z | Up at 0.33 | -10.64 | 17h ET | alert 0.37 cap 0.5 | 205.2s left | - |
 | 5m | 1-26-0755z | Up at 0.39 | -10.58 | 02h ET | alert 0.37 cap 0.41 | 238.1s left | - |
@@ -109,21 +113,22 @@ Brier: model 0.2104 vs market 0.2184 on 592 rounds (lower = sharper; sharper is 
 | 5m | 1-27-1930z | Down at 0.41 | -10.56 | 14h ET | alert 0.53 cap 0.61 | 236.9s left | - |
 | 5m | 1-27-1955z | Down at 0.49 | -10.48 | 14h ET | alert 0.5 cap 0.54 | 206.9s left | - |
 | 5m | 1-27-2025z | Down at 0.43 | -10.54 | 15h ET | alert 0.44 cap 0.5 | 206.9s left | - |
+| 5m | 1-27-2345z | Down at 0.46 | -10.51 | 18h ET | alert 0.56 cap 0.63 | 206.9s left | - |
 
 ## Oracle
 
-Expected P&L per posted order at the live win rate (86%): +0.64
-…at the historical AGREE win rate (78.1%): **-0.32**
-…with the 0.0175 maker fee at the live rate: +0.61
-Win probability needed to break even with this price mix and these fill rates: **80.8%**
-If the true win rate were the historical 78.1%, the frozen 100-fill screen (+3 points) would still PASS in 54% of 2,000 simulations: the screen is a first look, not proof.
+Expected P&L per posted order at the live win rate (83%): +0.37
+…at the historical AGREE win rate (78.1%): **-0.23**
+…with the 0.0175 maker fee at the live rate: +0.34
+Win probability needed to break even with this price mix and these fill rates: **80.0%**
+If the true win rate were the historical 78.1%, the frozen 100-fill screen (+3 points) would still PASS in 69% of 2,000 simulations: the screen is a first look, not proof.
 Assumes the observed fill rates (when right / when wrong) and price mix stay the same.
 
 ## Chronos
 
-Maker windows logged 126 of ~126 in its span · coverage gaps over 22 min: 0
-5m settled rounds recorded 679 · gaps over 7.5 min: 21 (longest 1.2 h)
-5m ticket versions in the experiment: {'v19': 95}
+Maker windows logged 137 of ~137 in its span · coverage gaps over 22 min: 0
+5m settled rounds recorded 712 · gaps over 7.5 min: 21 (longest 1.2 h)
+5m ticket versions in the experiment: {'v19': 99, 'v20': 4}
 Provenance: 5m prices = Polymarket US gateway (/bbo, /book fallback) · 5m winners = Polymarket US settlementPx · BTC = Coinbase · maker quotes = Kalshi /markets list · maker fills = Kalshi public trades · 15m history = Kalshi candles (Phase 1).
 
 ## Mirror
@@ -142,10 +147,10 @@ Pending: a live price comparison needs a Polymarket US 15m quote at each maker p
 **Flags:** team relay: 1 failed in 24h
 Workflows active in the last 24h: 8 · runs 100 · failed 1
 5m tickets data: last update 0.7 h ago (limit 6 h)
-maker15 orders: last update 0.4 h ago (limit 3 h)
-maker15 audit: last update 1.2 h ago (limit 6 h)
-vault: last update 0.0 h ago (limit 6 h)
-Relay: 12 requests tracked, 0 cards waiting for Discord
+maker15 orders: last update 0.3 h ago (limit 3 h)
+maker15 audit: last update 3.9 h ago (limit 6 h)
+vault: last update 1.6 h ago (limit 6 h)
+Relay: 13 requests tracked, 0 cards waiting for Discord
 
 ## Genesis
 
